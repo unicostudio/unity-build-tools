@@ -73,3 +73,6 @@ crashlytics-build.properties
 # UnicoVersionTracker writes its build/SDK metadata to <project>/../UnicoVersionTracker
 # relative to Assets — in this repo that is the repo root. Dev-project test output, never tracked.
 /UnicoVersionTracker/
+
+# Android gradle/cmake scratch Unity leaves at the project root during player builds
+/.utmp/
