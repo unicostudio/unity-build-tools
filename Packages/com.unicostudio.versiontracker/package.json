@@ -1,7 +1,7 @@
 {
   "name": "com.unicostudio.versiontracker",
   "displayName": "UnicoStudio VersionTracker",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "documentationUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/README.md",
   "changelogUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/CHANGELOG.md",
   "licensesUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/LICENSE.md",

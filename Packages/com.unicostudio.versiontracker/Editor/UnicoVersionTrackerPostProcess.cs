@@ -17,7 +17,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
                 return;
             }
 
-            UnicoVersionExporter.ExportBuildInfoAsync(report.summary);
+            UnicoVersionExporter.ExportBuildInfo(report.summary);
         }
     }
 }

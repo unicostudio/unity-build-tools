@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.6.0] - 2026-08-05
+
+* **BEHAVIOUR CHANGE**: The post-build export is now **synchronous**
+  * `ExportBuildInfoAsync` was `async void`, so `OnPostprocessBuild` returned before
+    `await File.WriteAllTextAsync` completed. A consumer checking for the file right after the
+    build could get a false "missing"; in batchmode CI, where the editor may exit immediately
+    after the callback, the file could end up missing or truncated for real.
+  * The post-process hook now calls the new synchronous `ExportBuildInfo`, so the JSON is
+    guaranteed on disk by the time the build's post-process step finishes.
+  * Why this is safe to adopt: `IPostprocessBuildWithReport.OnPostprocessBuild` returns `void`,
+    so the tracker can never await its own export — a guaranteed write must be synchronous. The
+    cost is negligible: everything expensive in the export (assembly reflection, `Assets/`
+    directory scans, AppLovin's `LoadPluginDataSync` network call) already ran synchronously
+    *before* the old `await`; only the few-KB file write itself changed.
+
+* **NEW FEATURE**: `ExportBuildInfo(BuildSummary)` — synchronous export
+  * Returns the path written, or `null` if the write failed.
+
+* **NEW FEATURE**: `GetBuildInfoPath(BuildTarget platform)` — the build-info path is now public
+  * Returns exactly the path `ExportBuildInfo` writes for that platform (same folder, same
+    sanitised filename), composed by the same single code path, so the two cannot drift.
+  * Pure query: it does **not** create the output directory, unlike the internal write-path
+    helper. Consumers no longer need to reconstruct the filename themselves.
+
+* **IMPROVEMENT**: Read paths no longer create the output directory
+  * `GetSavedBuildInfo` / `GetSavedBuildInfoJson` only read, yet they used to create
+    `UnicoVersionTracker/` as a side effect of composing the path. They now route through the
+    pure path composer; `Directory.CreateDirectory` survives only on the write paths.
+
+* **NOTE**: `ExportBuildInfoAsync(BuildSummary)` keeps its callable signature
+  * It now delegates to `ExportBuildInfo` and completes synchronously (`async` was an
+    implementation detail, not part of the signature). Its name is now slightly inaccurate —
+    the deliberate price of not breaking existing callers.
+
 ## [1.5.1] - 2026-08-05
 
 ### Changed

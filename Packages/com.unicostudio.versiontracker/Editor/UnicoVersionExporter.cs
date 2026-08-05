@@ -281,10 +281,14 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
         /// Exports the build information to a json file.
         /// </summary>
         /// <param name="buildSummary">The build summary.</param>
+        /// <returns>The path the file was written to, or <c>null</c> if the write failed.</returns>
         /// <remarks>
         /// The file path will be <c>Assets/../UnicoVersionTracker/[platform]_BuildInfo.json</c>.
+        /// The write is synchronous: the file is guaranteed to exist once this method returns,
+        /// which the void-returning <c>IPostprocessBuildWithReport.OnPostprocessBuild</c> cannot
+        /// promise with an awaited write.
         /// </remarks>
-        public static async void ExportBuildInfoAsync(BuildSummary buildSummary)
+        public static string ExportBuildInfo(BuildSummary buildSummary)
         {
             try
             {
@@ -295,17 +299,32 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
                 var json = JsonConvert.SerializeObject(buildInfo, s_jsonSerializerSettings);
 
                 // Save to file
-                await File.WriteAllTextAsync(filePath, json);
+                File.WriteAllText(filePath, json);
                 Debug.Log($"Build info saved to {filePath}");
+                return filePath;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"Error writing file: {ex}");
+                return null;
             }
             finally
             {
                 UnicoVersionTrackerProgressBar.StopLoading();
             }
+        }
+
+        /// <summary>
+        /// Exports the build information to a json file.
+        /// </summary>
+        /// <param name="buildSummary">The build summary.</param>
+        /// <remarks>
+        /// Since 1.6.0 this delegates to <see cref="ExportBuildInfo"/> and the write completes
+        /// before it returns; the name is kept so existing callers still compile.
+        /// </remarks>
+        public static void ExportBuildInfoAsync(BuildSummary buildSummary)
+        {
+            ExportBuildInfo(buildSummary);
         }
 
         /// <summary>
@@ -368,7 +387,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
         {
             try
             {
-                var filePath = GetFilePath(string.Empty, $"{platform}_BuildInfo");
+                var filePath = ComposeFilePath(string.Empty, $"{platform}_BuildInfo");
                 var json = await File.ReadAllTextAsync(filePath);
                 return json;
             }
@@ -379,14 +398,38 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
             }
         }
 
-        private static string GetFilePath(string folderPathPostfix, string fileNamePostfix)
+        /// <summary>
+        /// Returns the path <see cref="ExportBuildInfo"/> writes the build information to for the
+        /// given platform: same folder, same sanitised filename.
+        /// </summary>
+        /// <param name="platform">The target platform.</param>
+        /// <returns>The build info file path for the given platform.</returns>
+        /// <remarks>
+        /// Pure query — it never touches the file system, so it does not create the output
+        /// folder and the returned path may not exist yet.
+        /// </remarks>
+        public static string GetBuildInfoPath(BuildTarget platform)
+        {
+            return ComposeFilePath(string.Empty, $"{platform}_BuildInfo");
+        }
+
+        /// <summary>
+        /// The single place the export path is composed. Pure — no file system access.
+        /// </summary>
+        private static string ComposeFilePath(string folderPathPostfix, string fileNamePostfix)
         {
             // Predefined folder path
             var folderPath = Path.Combine(ASSETS, "../UnicoVersionTracker/", folderPathPostfix);
             var fileName = $"{Application.productName}_{Application.version}_{fileNamePostfix}.json";
-            var filePath = Path.Combine(folderPath, MakeFileNameFriendly(fileName));
+            return Path.Combine(folderPath, MakeFileNameFriendly(fileName));
+        }
 
-            // Ensure the folder exists
+        private static string GetFilePath(string folderPathPostfix, string fileNamePostfix)
+        {
+            var filePath = ComposeFilePath(folderPathPostfix, fileNamePostfix);
+
+            // Ensure the folder exists — write paths only
+            var folderPath = Path.GetDirectoryName(filePath);
             if (!Directory.Exists(folderPath))
             {
                 Directory.CreateDirectory(folderPath);
