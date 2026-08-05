@@ -76,3 +76,6 @@ crashlytics-build.properties
 
 # Android gradle/cmake scratch Unity leaves at the project root during player builds
 /.utmp/
+
+# JetBrains Rider project folders (anywhere in the tree)
+.idea/

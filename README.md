@@ -15,7 +15,7 @@ Packages live under `Packages/` as embedded packages:
 
 - **Install by git URL, pin to a tag.** `main` moves as packages evolve — always append
   `#<package-id>/<version>` for anything past local experimentation.
-- **Tags are per package:** `com.unicostudio.versiontracker/1.5.0`. A release = version bump in
+- **Tags are per package:** `com.unicostudio.versiontracker/1.5.1`. A release = version bump in
   the package's `package.json` + a CHANGELOG entry + the matching tag.
 - **Packages must stay independently consumable.** A package may not reference another package in
   this repo unless it declares the dependency in its own `package.json`.
@@ -31,7 +31,7 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 Pinned to a version (recommended):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.5.0
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.5.1
 ```
 
 > Migrating from the old repo? The package id, namespaces and layout are unchanged — replace the

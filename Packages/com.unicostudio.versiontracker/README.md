@@ -16,7 +16,9 @@
 ## Installation
 
 - Add this package to your project using Unity's Package Manager.  
-   Paste the following Git URL into the "Add package from Git URL" option: https://github.com/unicostudio/UnicoVersionTracker.git
+   Paste the following Git URL into the "Add package from Git URL" option (pin to a tag for
+   anything past local experimentation):
+   `https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.5.1`
 
 ---
 

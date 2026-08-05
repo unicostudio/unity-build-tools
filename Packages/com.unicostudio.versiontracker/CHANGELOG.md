@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.5.1] - 2026-08-05
+
+### Changed
+- Repository metadata only — zero code changes. The package now lives in the
+  `unicostudio/unity-build-tools` monorepo (`Packages/com.unicostudio.versiontracker`); the
+  `documentationUrl` / `changelogUrl` / `licensesUrl` fields and the README install instructions
+  now point there instead of the retired `unicostudio/UnicoVersionTracker` repo. (`licensesUrl`
+  also pointed at a `master` branch that never existed — fixed in passing.) The
+  `com.unicostudio.versiontracker/1.5.0` tag remains the byte-identical verbatim move of the old
+  repo's `main`; this release exists so a fresh install's own metadata points at the right home.
+
 All notable changes to this package will be documented in this file.
 
 ## [1.5.0] - 2026-02-02

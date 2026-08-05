@@ -1,10 +1,10 @@
 {
   "name": "com.unicostudio.versiontracker",
   "displayName": "UnicoStudio VersionTracker",
-  "version": "1.5.0",
-  "documentationUrl": "https://github.com/unicostudio/UnicoVersionTracker/blob/main/README.md",
-  "changelogUrl": "https://github.com/unicostudio/UnicoVersionTracker/blob/main/CHANGELOG.md",
-  "licensesUrl": "https://github.com/unicostudio/UnicoVersionTracker/blob/master/LICENSE.md",
+  "version": "1.5.1",
+  "documentationUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/README.md",
+  "changelogUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/CHANGELOG.md",
+  "licensesUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.versiontracker/LICENSE.md",
   "description": "A Unity Editor tool to track and save third-party SDK versions (e.g., AdMob, Firebase, Adjust, AppLovin) and build details (e.g., compression method, platform) automatically after each build. Also provides a manual export option via the Unity Editor for quick access to SDK version information.",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1"
