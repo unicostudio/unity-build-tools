@@ -1,5 +1,5 @@
-// Dev-project-only headless smoke build — NOT part of any package. Its one job: produce a real
-// Android player build so post-build hooks (IPostprocessBuildWithReport) demonstrably fire.
+// Dev-project-only headless smoke builds — NOT part of any package. Their one job: produce real
+// player builds so post-build hooks (IPostprocessBuildWithReport) demonstrably fire.
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -32,6 +32,32 @@ public static class DevBuild
             scenes = new[] { scenePath },
             locationPathName = "Builds/Android/dev.apk",
             target = BuildTarget.Android,
+            options = BuildOptions.None,
+        });
+
+        var s = report.summary;
+        Debug.Log($"[DevBuild] result={s.result} output={s.outputPath} errors={s.totalErrors}");
+        EditorApplication.Exit(s.result == BuildResult.Succeeded ? 0 : 1);
+    }
+
+    // Unity -batchmode -nographics -buildTarget iOS -executeMethod DevBuild.BuildIos
+    // Produces an Xcode project (no signing needed), which is a full player build as far as
+    // IPostprocessBuildWithReport is concerned.
+    public static void BuildIos()
+    {
+        const string scenePath = "Assets/Scenes/Dev.unity";
+        if (!System.IO.File.Exists(scenePath))
+        {
+            System.IO.Directory.CreateDirectory("Assets/Scenes");
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            EditorSceneManager.SaveScene(scene, scenePath);
+        }
+
+        var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+        {
+            scenes = new[] { scenePath },
+            locationPathName = "Builds/iOS",
+            target = BuildTarget.iOS,
             options = BuildOptions.None,
         });
 
