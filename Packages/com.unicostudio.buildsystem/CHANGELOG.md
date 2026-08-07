@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.2] - 2026-08-07
+
+### Fixed
+- Panel artifact "Show" now reveals the normalized path. Producers compose artifact paths their
+  own way — the VersionTracker glue legitimately records `Assets/../UnicoVersionTracker/…` — and
+  `File.Exists` resolves that against the project root, but the OS file viewer behind
+  `RevealInFinder` does not: the raw `..` segment opened the wrong folder (surfaced live by BT5's
+  C4 Gate 2). Check, reveal and the not-found dialog now share one `Path.GetFullPath`-normalized
+  path (`ResolveArtifactPath`, unit-tested; unresolvable strings fall back raw so the dialog names
+  what the record holds).
+
 ## [0.10.1] - 2026-08-07
 
 ### Changed

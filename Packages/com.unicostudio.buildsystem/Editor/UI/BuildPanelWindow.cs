@@ -79,6 +79,19 @@ namespace UnicoStudio.BuildSystem.Editor
         // user interaction.
         internal static bool ShouldRepaint(bool running, bool wasRunning) => running || running != wasRunning;
 
+        // Pure path decision (unit-tested): producers compose artifact paths their own way — the
+        // tracker's GetBuildInfoPath legitimately records "Assets/../UnicoVersionTracker/…".
+        // File.Exists resolves that against the project root, but the OS file viewer behind
+        // RevealInFinder does not: a raw ".." segment lands it in the wrong folder (surfaced live
+        // by BT5's C4 Gate 2). Check and reveal must therefore share ONE normalized path; anything
+        // GetFullPath cannot resolve falls back to the raw string, whose Exists() check then
+        // routes honestly to the not-found dialog.
+        internal static string ResolveArtifactPath(string path)
+        {
+            try { return Path.GetFullPath(path); }
+            catch (Exception) { return path; }
+        }
+
         private static string FormatDuration(double seconds)
         {
             var t = TimeSpan.FromSeconds(seconds);
@@ -348,8 +361,9 @@ namespace UnicoStudio.BuildSystem.Editor
                             EditorGUILayout.LabelField("• " + a);
                             if (GUILayout.Button("Show", GUILayout.Width(48)))
                             {
-                                if (File.Exists(a) || Directory.Exists(a)) EditorUtility.RevealInFinder(a);
-                                else EditorUtility.DisplayDialog("Not found", "Artifact no longer exists:\n" + a, "OK");
+                                var resolved = ResolveArtifactPath(a);
+                                if (File.Exists(resolved) || Directory.Exists(resolved)) EditorUtility.RevealInFinder(resolved);
+                                else EditorUtility.DisplayDialog("Not found", "Artifact no longer exists:\n" + resolved, "OK");
                             }
                         }
                     }
