@@ -1,0 +1,27 @@
+{
+    "name": "UnicoStudio.BuildSystem.Editor",
+    "rootNamespace": "",
+    "references": [
+        "UnicoStudio.BuildSystem",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.addressables",
+            "expression": "",
+            "define": "UNICO_HAS_ADDRESSABLES"
+        }
+    ],
+    "noEngineReferences": false
+}

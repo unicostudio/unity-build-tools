@@ -1,0 +1,15 @@
+{
+  "name": "com.unicostudio.buildsystem",
+  "version": "0.10.0",
+  "displayName": "Unico Build System",
+  "description": "Single-panel build automation for Unico mobile games: reload-safe build jobs, pre-flight checks, versioned Addressables content updates, artifact naming, and crash recovery.",
+  "unity": "6000.0",
+  "dependencies": {},
+  "samples": [
+    {
+      "displayName": "Build Hooks",
+      "description": "Host-side samples: keystore passwords from environment variables (applied on editor load, BEFORE preflight — deliberately not a hook) and a post-success symbols-upload [UnicoBuildStep] skeleton.",
+      "path": "Samples~/Hooks"
+    }
+  ]
+}
