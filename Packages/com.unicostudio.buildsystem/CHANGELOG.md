@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.1] - 2026-08-07
+
+### Changed
+- Documentation only — zero code changes. The package now lives in the `unicostudio/unity-build-tools`
+  monorepo (`Packages/com.unicostudio.buildsystem`; history stays in `g-brain_test_legacy`). The
+  README's opening line no longer names a specific game, and the audit's last open portability
+  question is closed with a measurement: the dev project compiled the package WITHOUT Addressables
+  (clean, suite green at the reduced count), proving the `versionDefines` contract — an
+  Addressables-less host works out of the box, gated features simply absent.
+
 ## [0.10.0] - 2026-08-07
 
 ### Changed

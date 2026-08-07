@@ -1,6 +1,6 @@
 # Build Automation System
 
-Single-panel control for reproducible Test and Release builds of Brain Test AS on Android and iOS. Replaces the manual, error-prone version / define / Addressables juggling that used to happen before every build.
+Single-panel control for reproducible Test and Release builds of Unico mobile games on Android and iOS. Replaces the manual, error-prone version / define / Addressables juggling that used to happen before every build.
 
 Entry point:
 - `UnicoStudio ▸ BuildPanel` opens `BuildPanelWindow` (Editor/UI). It assembles a `BuildRequest`, runs pre-flight checks for display, and on Build calls `UnicoBuildService.Start`.

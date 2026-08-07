@@ -55,9 +55,13 @@ Rules:
   (2) The `[InitializeOnLoad]` registration order of `CiCompletionWatcher` vs `PostSuccessRunner`:
   between `Arm` and the first drain tick `HasPending` is true, and in that window a past-deadline
   watcher tick's behaviour depends on an ordering the source does not determine.
-  (3) Does the Editor asmdef's unconditional `Unity.Addressables*` reference list break
-  compilation in a host WITHOUT Addressables installed? The portability claim is untested — no
-  such host exists to test in. Settle during C4 (BT5 adoption) or with a scratch project.
+  (3) ~~Does the Editor asmdef's unconditional `Unity.Addressables*` reference list break
+  compilation in a host WITHOUT Addressables installed?~~ **MEASURED 2026-08-07, C3 phase 1**:
+  the unity-build-tools dev project opened WITHOUT Addressables — compile clean (exit 0, zero
+  CS errors), suite green at 239/243 (the gated tests contribute nothing, exactly as designed).
+  The versionDefines premise holds: Unity skips name-based asmdef references to absent
+  assemblies, for the Tests asmdef's ungated reference too. Adding Addressables 2.7.6 restored
+  the full 242-package-test parity plus Unity's own DocExampleCode stub.
   (4) An exception escaping `Finish`'s **finally** (the 2026-07-31 reachability audit covered the
   TRY only) would wedge the job `Active` forever, beyond even `ResetStuckJob`. No concrete
   thrower found; the question is whether one can exist.
