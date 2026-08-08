@@ -77,5 +77,10 @@ crashlytics-build.properties
 # Android gradle/cmake scratch Unity leaves at the project root during player builds
 /.utmp/
 
+# CI: host repo clones planted in the runner workspace by the invariants job,
+# and the default results dir of ci/run-editmode-tests.sh for manual runs
+/hosts/
+/CiResults/
+
 # JetBrains Rider project folders (anywhere in the tree)
 .idea/

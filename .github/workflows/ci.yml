@@ -1,0 +1,98 @@
+# Thin trigger layer ONLY — all logic lives in ci/*.sh (orchestrator-agnostic
+# rule: a Jenkins migration reuses the scripts verbatim; only this wiring file
+# is rewritten as Jenkinsfile stages).
+#
+# Runner prerequisites (one-time, documented in the CI program):
+#   - self-hosted Apple-Silicon Mac registered with labels: self-hosted, macOS, unity-mac
+#     (unity-mac is a custom label — add it at registration; without it every run
+#     queues silently and dies after GitHub's 24h queue limit)
+#   - Unity 6000.0.62f1 installed via Unity Hub, Pro seat activated
+#   - repo secret CI_REPO_READ_TOKEN: fine-grained PAT with read-only contents
+#     access to unicostudio/g-brain_test_legacy and unicostudio/g-brain_test_5.
+#     NOTE: the org must allow fine-grained PAT access (org setting), and these
+#     tokens EXPIRE (90-day default) — an expired token surfaces as
+#     "Repository not found" on the host checkouts, not as an auth error.
+#
+# Release ritual note: push the branch and the tag together
+# (`git push origin main <tag>`) — a branch-only push can trigger a run whose
+# checkout predates the tag, failing invariant 1 spuriously.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  # Nightly run: every invariant this lane enforces (glue parity, StripDefines,
+  # pins/locks, testables) can drift on HOST commits, which never trigger this
+  # repo's push event. The cron closes that window. (03:17 UTC ≈ 06:17 TR)
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+# Superseded runs are cancelled (Jenkins equivalent: disableConcurrentBuilds abortPrevious).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editmode-tests:
+    runs-on: [self-hosted, macOS, unity-mac]
+    timeout-minutes: 40
+    steps:
+      # clean: false — a `git clean -ffdx` would wipe the gitignored Library/
+      # import cache and force a cold reimport on every run. Test lanes rely on
+      # the warm cache; build lanes will do their own explicit cleaning.
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+      - name: EditMode tests (buildsystem assembly must be exactly 246 passed)
+        run: |
+          ci/run-editmode-tests.sh \
+            --project . \
+            --expected-assembly UnicoStudio.BuildSystem.Editor.Tests.dll \
+            --expected-count 246 \
+            --results-dir "$RUNNER_TEMP/ci-results" \
+            --timeout-minutes 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editmode-results
+          path: ${{ runner.temp }}/ci-results/
+          retention-days: 7
+          # v4 artifacts are immutable per run: without this, a job re-run's
+          # second upload 409s and fails an otherwise-green run.
+          overwrite: true
+
+  invariants:
+    runs-on: [self-hosted, macOS, unity-mac]
+    # First run on a cold runner clones both host repos — budget for it.
+    timeout-minutes: 30
+    steps:
+      # fetch-depth: 0 — verify-invariants.sh resolves refs/tags/<pkg>/<version>
+      # and reads package.json at those tags; the checkout@v4 default (depth 1,
+      # --no-tags) would make every tag lookup a false FAIL.
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+          fetch-depth: 0
+          fetch-tags: true
+      # Host checkouts: invariants read only text files (manifests, locks, one
+      # .cs, .asset/.meta YAML) — skip LFS smudge so a cold clone of two large
+      # Unity repos stays fast and cannot blow the job timeout.
+      - uses: actions/checkout@v4
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1'
+        with:
+          repository: unicostudio/g-brain_test_legacy
+          token: ${{ secrets.CI_REPO_READ_TOKEN }}
+          path: hosts/bta
+          clean: false
+      - uses: actions/checkout@v4
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1'
+        with:
+          repository: unicostudio/g-brain_test_5
+          token: ${{ secrets.CI_REPO_READ_TOKEN }}
+          path: hosts/bt5
+          clean: false
+      - name: Cross-repo invariants (pins, lock hashes, glue parity, StripDefines, testables)
+        run: ci/verify-invariants.sh --host BTA=hosts/bta --host BT5=hosts/bt5
