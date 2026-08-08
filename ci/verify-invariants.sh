@@ -20,12 +20,20 @@
 #      is enforced nowhere else — this check is the enforcement.
 #   5. Host manifests list com.unicostudio.buildsystem under "testables"
 #      (without it the package's EditMode tests silently do not run in hosts).
+#   6. Content-state sanity: every bundle URL referenced by a host's
+#      addressables_content_state.bin must use the Production profile and
+#      point at PUBLISHED content (one sample URL per referenced version
+#      folder is probed on the CDN; 404 = FAIL, network trouble = WARN).
+#      Guards against the v14/Test-style poisoning that destroyed BT5's
+#      Android lineage on 2026-07-17.
 #
 # Usage:
 #   verify-invariants.sh --host BTA=/path/to/host [--host BT5=/path/to/host ...]
 #     [--tools <path>]          unity-build-tools repo (default: this script's repo)
 #     [--glue <relative-path>]  glue file path inside hosts
 #     [--strip-define <name>]   required StripDefines entry
+#     [--require-profile <p>]   profile the content-state bins must reference (default: Production)
+#     [--skip-cdn]              skip the live CDN probes of invariant 6 (offline runs)
 #
 # Exit codes: 0 = all checks pass (warnings allowed); 1 = at least one FAIL.
 
@@ -35,6 +43,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOLS="$(cd "$SCRIPT_DIR/.." && pwd)"
 GLUE_REL="Assets/02_Scripts/Editor/VersionTrackerArtifactStep.cs"
 STRIP_DEFINE="UNITY_MCP_READY"
+REQUIRE_PROFILE="Production"
+SKIP_CDN=0
 PACKAGES=(com.unicostudio.buildsystem com.unicostudio.versiontracker)
 HOST_NAMES=()
 HOST_PATHS=()
@@ -57,6 +67,8 @@ while [[ $# -gt 0 ]]; do
     --tools) need_value "$@"; TOOLS="$(cd "$2" && pwd)"; shift 2 ;;
     --glue) need_value "$@"; GLUE_REL="$2"; shift 2 ;;
     --strip-define) need_value "$@"; STRIP_DEFINE="$2"; shift 2 ;;
+    --require-profile) need_value "$@"; REQUIRE_PROFILE="$2"; shift 2 ;;
+    --skip-cdn) SKIP_CDN=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; echo "FAIL: unknown argument: $1" >&2; exit 1 ;;
   esac
@@ -212,6 +224,54 @@ sys.exit(0 if "com.unicostudio.buildsystem" in m.get("testables", []) else 1)
     pass "5. $host: manifest testables includes com.unicostudio.buildsystem"
   else
     failed "5. $host: manifest testables does NOT include com.unicostudio.buildsystem — its EditMode tests silently do not run in this host"
+  fi
+done
+
+# --- 6. content-state sanity (poison guard) -----------------------------------
+# The committed bin records the SHIPPED state, so every reference must use the
+# required (Production) profile and point at content that is actually live.
+# A bin written by a gate/test build references a Test-profile or unpublished
+# version folder — exactly how BT5's Android lineage was destroyed 2026-07-17.
+for i in "${!HOST_NAMES[@]}"; do
+  host="${HOST_NAMES[$i]}"; host_path="${HOST_PATHS[$i]}"
+  found_bins=0
+  for bin in "$host_path"/Assets/AddressableAssetsData/*/addressables_content_state.bin; do
+    [[ -f "$bin" ]] || continue
+    found_bins=$((found_bins + 1))
+    platform="$(basename "$(dirname "$bin")")"
+    urls="$(strings "$bin" | grep -oE 'https?://[^"[:space:]]+\.bundle' | sort -u || true)"
+    if [[ -z "$urls" ]]; then
+      failed "6. $host/$platform: no bundle URLs extractable from content-state bin (unreadable or unexpected format)"
+      continue
+    fi
+    bad_profile="$(echo "$urls" | grep -m1 -vE "/$REQUIRE_PROFILE/" || true)"
+    if [[ -n "$bad_profile" ]]; then
+      failed "6. $host/$platform: bin references non-$REQUIRE_PROFILE content (poison pattern): $bad_profile"
+      continue
+    fi
+    prefixes="$(echo "$urls" | sed -E 's|/[^/]+$||' | sort -u)"
+    if [[ "$SKIP_CDN" -eq 1 ]]; then
+      warn "6. $host/$platform: profile OK; CDN probe skipped (--skip-cdn)"
+      continue
+    fi
+    bad=0; inconclusive=0; labels=""
+    while IFS= read -r p; do
+      sample="$(echo "$urls" | grep -F -m1 "$p/" || true)"
+      short="$(echo "$p" | awk -F/ '{print $(NF-2)"/"$(NF-1)"/"$NF}')"
+      # 1-byte range GET: cheap liveness probe that works where HEAD may not.
+      code="$(curl -sL --max-time 20 -r 0-0 -o /dev/null -w '%{http_code}' "$sample" 2>/dev/null || echo 000)"
+      case "$code" in
+        200|206) labels="$labels${labels:+, }$short" ;;
+        404|410) failed "6. $host/$platform: bin references UNPUBLISHED content ($short -> HTTP $code): $sample"; bad=$((bad + 1)) ;;
+        *) warn "6. $host/$platform: CDN probe inconclusive for $short (HTTP $code) — not treated as a failure"; inconclusive=$((inconclusive + 1)) ;;
+      esac
+    done <<< "$prefixes"
+    if [[ $bad -eq 0 && $inconclusive -eq 0 ]]; then
+      pass "6. $host/$platform: all referenced version folders published ($labels)"
+    fi
+  done
+  if [[ $found_bins -eq 0 ]]; then
+    warn "6. $host: no content-state bin present for any platform (lineage not adopted, or known-lost — see the host's docs/content-state-lineage.md)"
   fi
 done
 
