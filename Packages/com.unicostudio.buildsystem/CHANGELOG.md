@@ -1,6 +1,26 @@
 # Changelog
 
-## [0.10.2] - 2026-08-07
+## [0.11.0] - 2026-08-13
+
+### Added
+- **Define guard**: the build's define plan is re-verified against the platform's ACTUAL
+  global defines at the last moment before `BuildPipeline.BuildPlayer`, and a violation fails
+  the build loudly with the offending define(s) named (`BuildFailedException`, plus a
+  `Define guard BLOCKED the player build` step in the result).
+  - Why: the global define write in `ConfigureDefinesStage` queues a domain reload, and that
+    reload wakes third-party `[InitializeOnLoad]` code that can silently fight the plan.
+    Measured live (2026-08-13, BTA iOS Test build): Unity-MCP's DependencyResolver re-added
+    `UNITY_MCP_READY` on the very reload the strip triggered, and the MCP bridge shipped into
+    the player's IL2CPP output while the stage's own report truthfully said the define had
+    been stripped. Nothing in the pipeline observed the world changing after the write.
+  - Mechanics: `ConfigureDefinesStage` records the plan into `BuildContext.Data` (persisted
+    through `BuildJobState`, so it survives the reload). The must-be-absent side uses the
+    resolver's `ForbidInPlayer` set — not `RemoveFromGlobal`, which is empty exactly when the
+    define was already absent at stage time, i.e. when a later third-party re-add would
+    otherwise go unguarded. The must-be-present side guards the kind-rule define the same way
+    in the opposite direction.
+  - Pure decision core (`DefineGuard.FindViolation`) plus plan record/parse helpers are
+    unit-tested (11 tests, mutation-probed kill-then-red); suite goes 246 -> 257.
 
 ### Fixed
 - Panel artifact "Show" now reveals the normalized path. Producers compose artifact paths their

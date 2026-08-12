@@ -41,6 +41,12 @@ namespace UnicoStudio.BuildSystem.Editor
             if (delta.AddViaExtra.Length > 0)
                 ctx.AddStep($"Defines +{string.Join(",", delta.AddViaExtra)} (build-only)");
 
+            // The plan is re-verified by PlayerBuildStage against the ACTUAL globals right
+            // before BuildPlayer: the reload this write queues wakes third-party
+            // [InitializeOnLoad] code that can fight the plan (measured: Unity-MCP re-adds
+            // UNITY_MCP_READY on that very reload). ctx.Data survives the reload.
+            DefineGuard.RecordPlan(ctx.Data, delta.ForbidInPlayer, delta.AddToGlobal);
+
             // The kind rule's add and every removal share ONE global write, so a build pays at most
             // one reload here (the orchestrator detects the change and resumes at the next stage).
             // Both directions are build-scoped: the snapshot restore in Finish puts the developer's

@@ -18,6 +18,7 @@ namespace UnicoStudio.BuildSystem.Editor
         public void Execute(BuildContext ctx)
         {
             var req = ctx.Request;
+            VerifyDefineGuard(ctx);
             var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
             var version = PlayerSettings.bundleVersion;
             var buildDate = DateTime.Now;
@@ -52,6 +53,26 @@ namespace UnicoStudio.BuildSystem.Editor
                     BuildArtifactNaming.FileName(BuildArtifactNaming.ProductPrefix, req.Label, version, code, buildDate, req.Kind, "aab"));
                 RunBuild(ctx, scenes, BuildTarget.Android, aab, aab: true);
             }
+        }
+
+        // The define plan recorded by ConfigureDefinesStage is re-verified against the
+        // platform's ACTUAL globals at the last moment before BuildPlayer — the reload the
+        // define write queued wakes third-party [InitializeOnLoad] code that can silently
+        // undo the plan (measured: Unity-MCP re-added UNITY_MCP_READY on that reload and
+        // the MCP bridge shipped into a real player). Violations fail LOUD.
+        private static void VerifyDefineGuard(BuildContext ctx)
+        {
+            var mustBeAbsent = DefineGuard.ParsePlanList(ctx.Data, DefineGuard.MustBeAbsentKey);
+            var mustBePresent = DefineGuard.ParsePlanList(ctx.Data, DefineGuard.MustBePresentKey);
+            if (mustBeAbsent.Count == 0 && mustBePresent.Count == 0) return;
+
+            var current = PlayerSettings.GetScriptingDefineSymbols(ctx.Request.Platform.ToNamedBuildTarget())
+                .Split(';').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+            var violation = DefineGuard.FindViolation(mustBeAbsent, mustBePresent, current);
+            if (violation == null) return;
+
+            ctx.AddStep($"Define guard BLOCKED the player build: {violation}");
+            throw new BuildFailedException($"[Build] Define guard: {violation}");
         }
 
         // Scripted builds take compression ONLY from BuildOptions flags — the Build Settings
