@@ -48,10 +48,17 @@ Rules:
 - **Open questions from the 2026-07-31 audit — looked at, NOT settled; each needs a live
   experiment, and none is a confirmed defect.** Recorded because the only other copy lived in a
   temp workflow output; an unrecorded question gets re-discovered at full price or never.
-  (1) Does `BuildPipeline.BuildPlayer` — or a modal `EditorUtility.DisplayDialog` — pump
-  `EditorApplication.update`? If yes, `Advance` has no re-entrancy guard and
-  `OrphanedDevStateRecovery.Offer` does not re-check `BuildJobState.Active`; both would be
-  serious. Settle by instrumenting an update handler during a real build.
+  (1) ~~Does `BuildPipeline.BuildPlayer`~~ — or a modal `EditorUtility.DisplayDialog` — ~~pump
+  `EditorApplication.update`?~~ **BuildPlayer half MEASURED 2026-08-13** (batchmode, real BTA
+  iOS Test player build via the CLI pipeline, Unity 6000.0.62f1): an `[InitializeOnLoad]`
+  update handler counting ticks inside an `IPreprocessBuildWithReport` →
+  `IPostprocessBuildWithReport` window (callbackOrder -10000) observed **zero** update ticks
+  during the whole `BuildPlayer` call. In batchmode, `Advance`'s missing re-entrancy guard is
+  not reachable through BuildPlayer pumping. The MODAL-DIALOG half stays OPEN: batchmode never
+  shows modals, so an interactive-editor panel build could still differ — re-run the same probe
+  interactively before relying on it there. If yes there, `Advance` has no re-entrancy guard
+  and `OrphanedDevStateRecovery.Offer` does not re-check `BuildJobState.Active`; both would be
+  serious.
   (2) The `[InitializeOnLoad]` registration order of `CiCompletionWatcher` vs `PostSuccessRunner`:
   between `Arm` and the first drain tick `HasPending` is true, and in that window a past-deadline
   watcher tick's behaviour depends on an ordering the source does not determine.
