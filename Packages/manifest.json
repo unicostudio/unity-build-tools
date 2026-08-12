@@ -6,6 +6,7 @@
     "com.unity.addressables": "2.7.6"
   },
   "testables": [
-    "com.unicostudio.buildsystem"
+    "com.unicostudio.buildsystem",
+    "com.unicostudio.versiontracker"
   ]
 }

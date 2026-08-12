@@ -44,12 +44,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           clean: false
-      - name: EditMode tests (buildsystem assembly must be exactly 246 passed)
+      - name: EditMode tests (buildsystem 246 + versiontracker 21, both fully passed)
         run: |
           ci/run-editmode-tests.sh \
             --project . \
             --expected-assembly UnicoStudio.BuildSystem.Editor.Tests.dll \
             --expected-count 246 \
+            --expected-assembly UnicoVersionTracker.Editor.Tests.dll \
+            --expected-count 21 \
             --results-dir "$RUNNER_TEMP/ci-results" \
             --timeout-minutes 30
       - uses: actions/upload-artifact@v4

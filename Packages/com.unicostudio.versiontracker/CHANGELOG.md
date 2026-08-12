@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.7.0] - 2026-08-13
+
+* **NEW**: EditMode test suite — the package's first (21 tests, assembly
+  `UnicoVersionTracker.Editor.Tests`, gated by `UNITY_INCLUDE_TESTS`)
+  * Path contract: `GetBuildInfoPath` composition (product/version prefix, platform suffix,
+    folder at project root), filename sanitisation, cross-call stability, purity (no
+    directory creation), per-platform distinctness.
+  * Export contract: synchronous write at exactly the queried path, camelCase/indented JSON
+    with nulls included, `GetSavedBuildInfo` round-trip, and the 1.6.0 `ExportBuildInfoAsync`
+    shim completing its write before returning.
+  * Read-path characterization: missing file logs the double "Error reading file" and yields
+    null; corrupt JSON logs once and yields null.
+  * Catalog/record contracts: the 10-SDK catalog shape, `SdkInfo`'s opt-in serialization
+    (detection internals never reach the wire), record round-trips.
+  * Every assertion family was mutation-probed (kill-then-red) before landing.
+* **DOCUMENTED CONSTRAINT** (measured while building the suite): `GetSavedBuildInfo` /
+  `GetSavedBuildInfoJson` compose their path with `Application.productName`, a
+  main-thread-only Unity API. Await them on the main thread (Unity Test Framework `async`
+  tests do this correctly); calling them from a worker thread fails the read with a
+  `UnityException` logged as "Error reading file", and blocking the main thread on their
+  task deadlocks the editor — await, never `Wait()`.
+* Dev-project note: the monorepo's root manifest now lists the package under `testables`;
+  the repo-wide EditMode baseline is 268 (buildsystem 246 + versiontracker 21 + 1 Unity
+  Addressables doc stub).
+
 ## [1.6.0] - 2026-08-05
 
 * **BEHAVIOUR CHANGE**: The post-build export is now **synchronous**

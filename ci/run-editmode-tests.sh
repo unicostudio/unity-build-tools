@@ -22,8 +22,8 @@
 set -euo pipefail
 
 PROJECT=""
-EXPECTED_ASSEMBLY=""
-EXPECTED_COUNT=""
+EXPECTED_ASSEMBLIES=()
+EXPECTED_COUNTS=()
 EXPECTED_TOTAL=""
 RESULTS_DIR=""
 TIMEOUT_MINUTES=30
@@ -33,8 +33,9 @@ usage() {
   cat <<'EOF'
 Usage: run-editmode-tests.sh --project <path> [options]
   --project <path>            Unity project root (must contain ProjectSettings/ProjectVersion.txt)
-  --expected-assembly <dll>   Test assembly to assert on (e.g. UnicoStudio.BuildSystem.Editor.Tests.dll)
-  --expected-count <n>        Expected PASSED test count in --expected-assembly (requires --expected-assembly)
+  --expected-assembly <dll>   Test assembly to assert on; repeatable, each paired in order
+                              with the matching --expected-count
+  --expected-count <n>        Expected PASSED test count for the paired --expected-assembly
   --expected-total <n>        Expected project-wide test count (optional; PackageCache-coupled, prefer per-assembly)
   --results-dir <path>        Where to write editmode-results.xml and editmode.log (default: <project>/CiResults)
   --timeout-minutes <n>       Outer watchdog for the Unity process (default: 30)
@@ -49,8 +50,8 @@ is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project) need_value "$@"; PROJECT="$2"; shift 2 ;;
-    --expected-assembly) need_value "$@"; EXPECTED_ASSEMBLY="$2"; shift 2 ;;
-    --expected-count) need_value "$@"; EXPECTED_COUNT="$2"; shift 2 ;;
+    --expected-assembly) need_value "$@"; EXPECTED_ASSEMBLIES+=("$2"); shift 2 ;;
+    --expected-count) need_value "$@"; EXPECTED_COUNTS+=("$2"); shift 2 ;;
     --expected-total) need_value "$@"; EXPECTED_TOTAL="$2"; shift 2 ;;
     --results-dir) need_value "$@"; RESULTS_DIR="$2"; shift 2 ;;
     --timeout-minutes) need_value "$@"; TIMEOUT_MINUTES="$2"; shift 2 ;;
@@ -62,8 +63,11 @@ done
 
 # Validate cheap inputs BEFORE the expensive Unity run.
 [[ -n "$PROJECT" ]] || { usage >&2; fail "--project is required"; }
-[[ -z "$EXPECTED_COUNT" || -n "$EXPECTED_ASSEMBLY" ]] || fail "--expected-count requires --expected-assembly"
-[[ -z "$EXPECTED_COUNT" ]] || is_uint "$EXPECTED_COUNT" || fail "--expected-count must be a non-negative integer, got: $EXPECTED_COUNT"
+[[ ${#EXPECTED_ASSEMBLIES[@]} -eq ${#EXPECTED_COUNTS[@]} ]] \
+  || fail "each --expected-assembly needs exactly one paired --expected-count (got ${#EXPECTED_ASSEMBLIES[@]} vs ${#EXPECTED_COUNTS[@]})"
+for c in ${EXPECTED_COUNTS[@]+"${EXPECTED_COUNTS[@]}"}; do
+  is_uint "$c" || fail "--expected-count must be a non-negative integer, got: $c"
+done
 [[ -z "$EXPECTED_TOTAL" ]] || is_uint "$EXPECTED_TOTAL" || fail "--expected-total must be a non-negative integer, got: $EXPECTED_TOTAL"
 is_uint "$TIMEOUT_MINUTES" && [[ "$TIMEOUT_MINUTES" -gt 0 ]] || fail "--timeout-minutes must be a positive integer, got: $TIMEOUT_MINUTES"
 PROJECT="$(cd "$PROJECT" && pwd)" || fail "project path does not exist: $PROJECT"
@@ -148,11 +152,21 @@ fi
 # failure even if Unity exited 0.
 [[ -f "$RESULTS_XML" ]] || fail "no result XML was produced (unity exit $UNITY_EXIT, log: $LOG_FILE)"
 
-python3 - "$RESULTS_XML" "$EXPECTED_ASSEMBLY" "$EXPECTED_COUNT" "$EXPECTED_TOTAL" <<'PYEOF'
+# Pairs are passed as one "name=count;name=count" spec (assembly names carry no ';'/'=').
+EXPECT_SPEC=""
+for ((i = 0; i < ${#EXPECTED_ASSEMBLIES[@]}; i++)); do
+  EXPECT_SPEC="$EXPECT_SPEC${EXPECT_SPEC:+;}${EXPECTED_ASSEMBLIES[$i]}=${EXPECTED_COUNTS[$i]}"
+done
+
+python3 - "$RESULTS_XML" "$EXPECT_SPEC" "$EXPECTED_TOTAL" <<'PYEOF'
 import sys
 import xml.etree.ElementTree as ET
 
-xml_path, expected_assembly, expected_count, expected_total = sys.argv[1:5]
+xml_path, expect_spec, expected_total = sys.argv[1:4]
+expectations = [
+    (name, int(count))
+    for name, count in (pair.split("=", 1) for pair in expect_spec.split(";") if pair)
+]
 try:
     root = ET.parse(xml_path).getroot()
 except ET.ParseError as e:
@@ -194,14 +208,14 @@ if failed != 0 or result != "Passed" or passed != total:
         f"passed={passed}/{total}, skipped={skipped}, inconclusive={inconclusive}"
     )
 
-if expected_assembly:
+for expected_assembly, expected_count in expectations:
     a = assemblies.get(expected_assembly)
     if a is None:
         errors.append(
             f"expected assembly '{expected_assembly}' not found in results "
             f"(present: {', '.join(sorted(assemblies)) or 'none'})"
         )
-    elif expected_count and (a["passed"] != int(expected_count) or a["total"] != int(expected_count)):
+    elif a["passed"] != expected_count or a["total"] != expected_count:
         errors.append(
             f"count drift in {expected_assembly}: expected {expected_count} passed, "
             f"got passed={a['passed']} total={a['total']} skipped={a['skipped']} "
