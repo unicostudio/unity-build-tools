@@ -56,6 +56,7 @@ namespace UnicoStudio.BuildSystem.Editor
             // compile instead of racing the define write against the PackageCache removal.
             var strippedPackages = new List<string>();
             var globalsWritten = false;
+            var plannedDefines = string.Join(";", current);
             AssetDatabase.DisallowAutoRefresh();
             try
             {
@@ -72,6 +73,7 @@ namespace UnicoStudio.BuildSystem.Editor
                 if (next != string.Join(";", current))
                 {
                     globalsWritten = true;
+                    plannedDefines = next;
                     PlayerSettings.SetScriptingDefineSymbols(nbt, next);
                     if (delta.AddToGlobal.Length > 0)
                         ctx.AddStep($"Defines +{string.Join(",", delta.AddToGlobal)} (global, restored after the build)");
@@ -94,6 +96,14 @@ namespace UnicoStudio.BuildSystem.Editor
             // builds too, not just package strips.
             if (globalsWritten || strippedPackages.Count > 0)
                 AssetDatabase.Refresh();
+
+            // Last-writer guard for the pre-reload window: third-party package-event
+            // handlers can rewrite the defines between this tick and the reload landing
+            // (measured: the surviving half-state failed every compile and wedged the
+            // job). The watcher re-asserts the written plan each tick until the reload
+            // lands; Finish disarms it on the same-domain exit paths.
+            if (globalsWritten || strippedPackages.Count > 0)
+                DefineReassertWatcher.Arm(nbt, plannedDefines);
 
             // The resolve's recompile carries no define delta, so the defines-hash in Advance
             // cannot see it — this is the Q5 signal path the reload-request flag exists for.

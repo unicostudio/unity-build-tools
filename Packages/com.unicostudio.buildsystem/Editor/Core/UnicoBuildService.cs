@@ -384,6 +384,9 @@ namespace UnicoStudio.BuildSystem.Editor
             try
             {
                 var definesBefore = ProjectDefinesHash(ctx.Request);
+                // The strip-window watcher must never fight the restore below: same-domain
+                // Finish paths (timeout reset, manual reset) reach here with it still armed.
+                DefineReassertWatcher.Disarm();
                 var snap = JsonUtility.FromJson<DevStateSnapshot>(state.SnapshotJson);
                 // FromJson returns NULL for a null/empty payload — it does not throw (measured on
                 // 6000.0.62f1; whitespace is the odd one out and throws ArgumentException, equally

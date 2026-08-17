@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.1] - 2026-08-17
+
+### Fixed
+- **Strip-window last-writer guard** (`DefineReassertWatcher`): newer third-party
+  dependency resolvers subscribe to UPM package-change events and can rewrite the
+  platform defines IN-SESSION — after ConfigureDefinesStage's write, before the queued
+  reload lands (measured on a host: the surviving "define present, package gone"
+  half-state failed every compile and wedged the job to the CI deadline; whether the
+  reload or the event handler wins is a race). The stage now arms a same-domain watcher
+  that re-asserts the written define plan on every editor tick until the reload lands;
+  the fight is bounded by construction — the watcher's subscription and the adversary's
+  code both die with the reload, the adversary cannot restore the stripped package, and
+  Finish disarms the watcher before the dev-state restore on same-domain exit paths so
+  it never fights the restore itself. Suite 280 -> 290.
+
 ## [0.12.0] - 2026-08-17
 
 ### Added

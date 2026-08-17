@@ -73,6 +73,19 @@ dep).
   package's own install folder only when MCP is present-by-manifest; with the dep stripped
   mid-build they are gone with it — measured: zero MCP traces in IL2CPP output).
 
+## 0.12.1 addendum — the strip window is contested (measured on the second host)
+
+Newer third-party dependency resolvers subscribe to UPM package-change events and can
+rewrite the platform defines IN-SESSION, after the stage's write and before the reload
+lands (measured: whether the reload or the handler wins is a race; the losing branch is
+"define present, package gone", which fails every compile and wedges the job to the CI
+deadline). Downgrading the host's resolver was eliminated by measurement (the host's tools
+use the newer API surface). Fix: `DefineReassertWatcher` — armed by ConfigureDefinesStage
+after its mutations, it re-asserts the written define plan on every editor tick until the
+reload lands. Bounded by construction: the watcher's subscription and the adversary's code
+both die with the reload, the adversary cannot restore the stripped package, and Finish
+disarms the watcher before the dev-state restore on same-domain exit paths.
+
 ## Rollout
 1. buildsystem 0.12.0: Q5 signal path → PackageStripGuard → config field + stage wiring →
    preflight checks. TDD (red-first), mutation probes, suite re-baseline (257 → +N).
