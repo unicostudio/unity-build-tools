@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.1] - 2026-08-17
+
+* **FIX**: the `Tests/` folder shipped in 1.7.0 was missing its own `.meta` file, so
+  consumers resolving the package from the git tag logged
+  "Asset .../Tests has no meta file, but it's in an immutable folder" on every import —
+  loud enough to fail host tests that assert clean error logs. 1.7.0's inner metas were
+  committed; only the folder's own meta was missed (surfaced by BT5's suite the first
+  time a host consumed 1.7.0).
+
 ## [1.7.0] - 2026-08-13
 
 * **NEW**: EditMode test suite — the package's first (21 tests, assembly
