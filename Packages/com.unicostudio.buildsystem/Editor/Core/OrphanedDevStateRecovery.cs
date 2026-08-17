@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ namespace UnicoStudio.BuildSystem.Editor
             // owns it, so either can outlive the other. Checking only the mirror would strand a
             // guard record here with nothing left to offer it.
             var json = EditorPrefs.GetString(s_key, "");
-            if (string.IsNullOrEmpty(json) && !ContentStateGuard.IsArmed) return;
+            if (string.IsNullOrEmpty(json) && !ContentStateGuard.IsArmed && !PackageStripGuard.IsArmed) return;
             // No human in the loop to judge whether these leftovers are still relevant, and a CI
             // run is normally seconds away from capturing its own dev state — silently mutating the
             // workspace from a stale EditorPrefs record would be invisible in the log and wrong.
@@ -49,8 +50,15 @@ namespace UnicoStudio.BuildSystem.Editor
                         $"NOT auto-restoring; '{ContentStateGuard.ArmedPath}' is left exactly as the interrupted run " +
                         $"left it, which will corrupt the next Update-Previous build if that run had rewritten it. " +
                         $"Record: {contentJson}");
+                var stripJson = PackageStripGuard.RecordJson;
+                if (!string.IsNullOrEmpty(stripJson))
+                    Debug.LogWarning("[Build] Orphaned package-strip record found in batchmode — NOT auto-restoring; " +
+                        "Packages/manifest.json (and the lock) may still be missing the stripped packages. Unlike " +
+                        "the records above these are TRACKED files: `git checkout -- Packages/` heals the checkout, " +
+                        $"and fresh CI checkouts are unaffected. Record: {stripJson}");
                 Disarm();
                 ContentStateGuard.Disarm();
+                PackageStripGuard.Disarm();
                 return;
             }
             // Dialogs are unsafe during InitializeOnLoad; defer to the first editor tick. Offer
@@ -68,21 +76,26 @@ namespace UnicoStudio.BuildSystem.Editor
         {
             var json = EditorPrefs.GetString(s_key, "");
             var contentRecord = ContentStateGuard.RecordJson;
+            var stripRecord = PackageStripGuard.RecordJson;
             var hasSnapshot = !string.IsNullOrEmpty(json);
             var hasContentState = !string.IsNullOrEmpty(contentRecord);
+            var hasStrippedPackages = !string.IsNullOrEmpty(stripRecord);
             // Either record can have been cleared between the constructor and this deferred call
             // (UnicoBuildCli's CI pre-clean, a new job's Finish, a second reload). With nothing
             // left, there is nothing to ask about.
-            if (!hasSnapshot && !hasContentState) return;
+            if (!hasSnapshot && !hasContentState && !hasStrippedPackages) return;
 
-            // Describe what is actually armed — the two records are independent, and promising to
+            // Describe what is actually armed — the records are independent, and promising to
             // restore a dev state that is not there teaches developers to distrust the dialog.
             const string devStateText = "dev state (scripting defines, app bundle flag, debug " +
                 "symbols, addressables profile, version bumps)";
             const string contentStateText = "addressables content state";
-            var what = hasSnapshot && hasContentState
-                ? devStateText + " and the " + contentStateText
-                : hasSnapshot ? devStateText : contentStateText;
+            const string strippedText = "build-stripped packages (manifest/lock)";
+            var parts = new List<string>(3);
+            if (hasSnapshot) parts.Add(devStateText);
+            if (hasContentState) parts.Add(contentStateText);
+            if (hasStrippedPackages) parts.Add(strippedText);
+            var what = string.Join(" and the ", parts);
 
             var restore = EditorUtility.DisplayDialog("Interrupted build detected",
                 $"A previous build was interrupted before restoring {what}.\n\n" +
@@ -173,11 +186,33 @@ namespace UnicoStudio.BuildSystem.Editor
                             "was: " + contentRecord);
                     }
                 }
+
+                // The package strip is the third independent undo, contained on its own for the
+                // same reason as the two above. RestoreIfArmedFor copies TRACKED files back
+                // (manifest/lock) — the least dangerous of the three restores, and the one a
+                // developer can always redo by hand with `git checkout -- Packages/`.
+                if (hasStrippedPackages)
+                {
+                    try
+                    {
+                        if (PackageStripGuard.RestoreIfArmedFor(PackageStripGuard.AnyJobStamp))
+                            Debug.Log("[Build] Orphaned package strip restored (manifest/lock).");
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        Debug.LogError("[Build] Orphaned package-strip restore FAILED. The record has " +
+                            "been cleared so this dialog does not reappear — the manifest and lock are " +
+                            "TRACKED files, `git checkout -- Packages/` restores them by hand. Record " +
+                            "was: " + stripRecord);
+                    }
+                }
             }
             finally
             {
                 Disarm(); // whatever happened — don't ask again every reload
                 ContentStateGuard.Disarm();
+                PackageStripGuard.Disarm();
             }
         }
     }

@@ -28,6 +28,22 @@ namespace UnicoStudio.BuildSystem.Editor
 
         public BuildContext(BuildRequest request) => Request = request;
 
+        // Q5 signal path: a stage (or host hook) that queues a domain reload through
+        // something OTHER than a global-define change — e.g. StripPackages' manifest edit
+        // + Client.Resolve — raises this so Advance stops exactly like the defines-hash
+        // path and resumes after the reload lands. Consume-once and same-tick by design:
+        // Advance reads it immediately after Execute, so it needs no persistence.
+        private bool _reloadRequested;
+
+        public void RequestReload() => _reloadRequested = true;
+
+        public bool ConsumeReloadRequest()
+        {
+            var requested = _reloadRequested;
+            _reloadRequested = false;
+            return requested;
+        }
+
         public void AddStep(string step) => Steps.Add(step);
 
         public void AddArtifact(string path) => AddArtifact(path, ArtifactKind.Unknown);

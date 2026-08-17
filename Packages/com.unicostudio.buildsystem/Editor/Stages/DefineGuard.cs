@@ -9,10 +9,10 @@ namespace UnicoStudio.BuildSystem.Editor
     ///
     /// Why it exists (measured live, 2026-08-13, BTA iOS Test build): the global define
     /// write in ConfigureDefinesStage queues a domain reload, and that reload wakes
-    /// third-party [InitializeOnLoad] code that can silently fight the plan — Unity-MCP's
-    /// DependencyResolver re-added UNITY_MCP_READY on the very reload the strip
-    /// triggered, and the MCP bridge shipped into the player's IL2CPP output. The stage's
-    /// own report ("Defines -UNITY_MCP_READY") was truthful; the world changed after it.
+    /// third-party [InitializeOnLoad] code that can silently fight the plan — a package's
+    /// dependency resolver re-added the very define the strip had just removed, and its
+    /// bridge shipped into the player's IL2CPP output (see CHANGELOG 0.11.0). The stage's
+    /// own report ("Defines -<define>") was truthful; the world changed after it.
     ///
     /// The plan is recorded into BuildContext.Data (persisted through BuildJobState, so
     /// it survives the reload) and checked against the platform's ACTUAL globals at

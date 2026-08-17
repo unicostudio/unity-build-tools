@@ -53,6 +53,9 @@ namespace UnicoStudio.BuildSystem.Editor
             // explicitly; clearing only the mirror would leave a stale rollback record that the
             // job started below could never own, and the next reload would warn about it forever.
             ContentStateGuard.Disarm();
+            // Third independent record, same rationale: a crashed run's package-strip
+            // backup must not be adopted by the job started below.
+            PackageStripGuard.Disarm();
             InjectKeystoreFromEnvironment();
 
             CiCompletionWatcher.Arm(options.ResultFile, options.TimeoutMinutes);

@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.12.0] - 2026-08-17
+
+### Added
+- **StripPackages**: `BuildTargetConfig.StripPackages` lists UPM package ids removed from
+  `Packages/manifest.json` for the build's duration and restored byte-exact afterwards —
+  the package-level sibling of `StripDefines`, for packages whose `[InitializeOnLoad]`
+  code fights the define plan (measured: Unity-MCP re-adds `UNITY_MCP_READY` on every
+  reload and has no off switch). Spec with the feasibility measurements:
+  `docs/specs/2026-08-17-strippackages-design.md` (~+30 s per build; restore
+  byte-determinism proven for exact pins).
+  - The manifest edit lands ATOMICALLY with the define write — one combined reload —
+    inside an auto-refresh bracket (measured: split steps break compilation; unbracketed,
+    the define write's compile races the PackageCache removal into a transient failed
+    pass). `ConfigureDefinesStage` owns both mutations for exactly this reason, and pumps
+    an explicit `AssetDatabase.Refresh()` after closing the bracket: AllowAutoRefresh does
+    not replay the refresh it suppressed and batchmode has no ticks that would — measured
+    E2E, the unpumped bracket wedged the job to the CI deadline with the recompile never
+    starting, for plain StripDefines builds too.
+  - `PackageStripGuard` (ContentStateGuard's shape): job-stamped record + byte backups of
+    manifest/lock under `Library/UnicoBuild/`; restore is UNCONDITIONAL in `Finish`
+    (success and failure alike), offered by the interrupted-build dialog with its own
+    containment, logged-and-cleared in batchmode (tracked files —
+    `git checkout -- Packages/` heals a crashed checkout), and pre-cleaned by the CLI.
+  - New preflight `StripPackagesCheck`: a listed package with dependents in the lock is a
+    Block (dependency-graph inversion is out of scope); a non-exact pin is a Warn (the
+    byte-deterministic restore was measured for exact pins only); absent ids are named
+    no-ops.
+- **Reload-request signal path (Q5, partial)**: `BuildContext.RequestReload()` lets a
+  stage (or hook) tell `Advance` about a queued reload the defines-hash cannot see — the
+  StripPackages resolve is the first user. Host-initiated recompiles outside the pipeline
+  remain Q5-open.
+- Suite: 246 -> 280 (Q5 flag semantics, PackageStripGuard cores incl. dangling-comma
+  repair and exact-pin/dependents heuristics, StripPackagesCheck evaluation), all
+  red-first with mutation probes.
+
 ## [0.11.0] - 2026-08-13
 
 ### Added

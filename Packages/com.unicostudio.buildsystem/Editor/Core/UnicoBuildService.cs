@@ -338,9 +338,12 @@ namespace UnicoStudio.BuildSystem.Editor
                     state.SetData(ctx.Data);
                     state.Save();
 
-                    // If this stage changed global defines, a recompile + reload is queued: stop here;
-                    // the sentinel keeps update ticks out until the reload lands, then the resumer re-enters.
-                    if (ProjectDefinesHash(request) != definesBefore)
+                    // If this stage changed global defines — or explicitly requested a reload it
+                    // queued some other way (ctx.RequestReload, the Q5 signal path: e.g. a
+                    // StripPackages manifest edit + Client.Resolve produces a recompile the
+                    // defines-hash cannot see) — stop here; the sentinel keeps update ticks out
+                    // until the reload lands, then the resumer re-enters.
+                    if (ctx.ConsumeReloadRequest() || ProjectDefinesHash(request) != definesBefore)
                     {
                         s_reloadPending = true;
                         return;
@@ -400,6 +403,15 @@ namespace UnicoStudio.BuildSystem.Editor
                     ctx.AddStep("Rolled back version bumps");
                 if (!success && ContentStateGuard.Restore(state.StartedTicksUtc))
                     ctx.AddStep("Restored addressables content state");
+                // StripPackages restore is unconditional — the developer's manifest/lock
+                // bytes come back on success and failure alike. The re-resolve queues a
+                // reload the defines-hash cannot see: hold the next job exactly like the
+                // define-restore path above.
+                if (PackageStripGuard.RestoreIfArmedFor(state.StartedTicksUtc))
+                {
+                    ctx.AddStep("Restored stripped packages");
+                    s_reloadPending = true;
+                }
                 restored = true;
                 ctx.AddStep("Restored dev state");
             }

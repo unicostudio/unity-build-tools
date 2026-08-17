@@ -19,7 +19,14 @@ namespace UnicoStudio.BuildSystem.Editor
 
         [Tooltip("Optional. Defines removed from this platform's global Player Settings for the " +
                  "duration of the build (triggers a mid-build recompile) and restored automatically " +
-                 "afterwards — e.g. UNITY_MCP_READY, which otherwise compiles the MCP bridge into the game.")]
+                 "afterwards — e.g. a third-party integration's readiness define, which would otherwise compile its bridge into the game.")]
         public string[] StripDefines = System.Array.Empty<string>();
+
+        [Tooltip("Optional. UPM package ids removed from Packages/manifest.json for the duration of " +
+                 "the build — atomically with the define write, one combined reload — and restored " +
+                 "byte-exact afterwards. For packages whose [InitializeOnLoad] code fights StripDefines " +
+                 "by re-adding its readiness define on every reload while the package is present. Listed " +
+                 "packages must be exact-pinned and dependency-free; pre-flight enforces both.")]
+        public string[] StripPackages = System.Array.Empty<string>();
     }
 }

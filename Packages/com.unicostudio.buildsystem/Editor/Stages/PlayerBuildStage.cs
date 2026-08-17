@@ -58,8 +58,8 @@ namespace UnicoStudio.BuildSystem.Editor
         // The define plan recorded by ConfigureDefinesStage is re-verified against the
         // platform's ACTUAL globals at the last moment before BuildPlayer — the reload the
         // define write queued wakes third-party [InitializeOnLoad] code that can silently
-        // undo the plan (measured: Unity-MCP re-added UNITY_MCP_READY on that reload and
-        // the MCP bridge shipped into a real player). Violations fail LOUD.
+        // undo the plan (measured: a third-party resolver re-added the stripped define
+        // on that reload and its bridge shipped into a real player). Violations fail LOUD.
         private static void VerifyDefineGuard(BuildContext ctx)
         {
             var mustBeAbsent = DefineGuard.ParsePlanList(ctx.Data, DefineGuard.MustBeAbsentKey);

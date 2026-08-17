@@ -7,8 +7,8 @@ namespace UnicoStudio.BuildSystem.Tests
     /// <summary>
     /// The define guard exists because a domain reload queued by ConfigureDefinesStage's
     /// global write wakes third-party [InitializeOnLoad] code that can fight the plan —
-    /// measured live 2026-08-13: Unity-MCP's DependencyResolver re-added UNITY_MCP_READY
-    /// on the very reload the strip triggered, and the MCP bridge shipped into a real
+    /// measured live 2026-08-13: a third-party dependency resolver re-added the stripped define
+    /// on the very reload the strip triggered, and its bridge shipped into a real
     /// player's IL2CPP output. The guard re-verifies the plan at the last moment before
     /// BuildPipeline.BuildPlayer and fails LOUD instead of shipping.
     /// </summary>
@@ -28,12 +28,12 @@ namespace UnicoStudio.BuildSystem.Tests
         public void StrippedDefineBack_InGlobals_IsViolation_NamingTheDefine()
         {
             var v = DefineGuard.FindViolation(
-                mustBeAbsent: L("UNITY_MCP_READY"),
+                mustBeAbsent: L("VENDOR_BRIDGE_READY"),
                 mustBePresent: L(),
-                currentGlobals: L("TEST_MODE", "UNITY_MCP_READY"));
+                currentGlobals: L("TEST_MODE", "VENDOR_BRIDGE_READY"));
 
             Assert.IsNotNull(v);
-            StringAssert.Contains("UNITY_MCP_READY", v);
+            StringAssert.Contains("VENDOR_BRIDGE_READY", v);
             StringAssert.Contains("re-added", v);
         }
 
@@ -41,7 +41,7 @@ namespace UnicoStudio.BuildSystem.Tests
         public void StrippedDefineStillAbsent_NoViolation()
         {
             Assert.IsNull(DefineGuard.FindViolation(
-                L("UNITY_MCP_READY"), L(), L("TEST_MODE", "ADDRESSABLES_ENABLED")));
+                L("VENDOR_BRIDGE_READY"), L(), L("TEST_MODE", "ADDRESSABLES_ENABLED")));
         }
 
         [Test]
@@ -68,10 +68,10 @@ namespace UnicoStudio.BuildSystem.Tests
         public void BothViolated_AbsentSideReportedFirst()
         {
             var v = DefineGuard.FindViolation(
-                L("UNITY_MCP_READY"), L("TEST_MODE"), L("UNITY_MCP_READY"));
+                L("VENDOR_BRIDGE_READY"), L("TEST_MODE"), L("VENDOR_BRIDGE_READY"));
 
             Assert.IsNotNull(v);
-            StringAssert.Contains("UNITY_MCP_READY", v);
+            StringAssert.Contains("VENDOR_BRIDGE_READY", v);
             StringAssert.DoesNotContain("TEST_MODE", v);
         }
 
@@ -79,10 +79,10 @@ namespace UnicoStudio.BuildSystem.Tests
         public void MultipleOffenders_AllNamed()
         {
             var v = DefineGuard.FindViolation(
-                L("UNITY_MCP_READY", "SECRET_TOOLING"), L(),
-                L("UNITY_MCP_READY", "SECRET_TOOLING", "FOO"));
+                L("VENDOR_BRIDGE_READY", "SECRET_TOOLING"), L(),
+                L("VENDOR_BRIDGE_READY", "SECRET_TOOLING", "FOO"));
 
-            StringAssert.Contains("UNITY_MCP_READY", v);
+            StringAssert.Contains("VENDOR_BRIDGE_READY", v);
             StringAssert.Contains("SECRET_TOOLING", v);
         }
 
@@ -94,10 +94,10 @@ namespace UnicoStudio.BuildSystem.Tests
             var data = new Dictionary<string, string>();
 
             DefineGuard.RecordPlan(data,
-                forbidInPlayer: new[] { "UNITY_MCP_READY", "X" },
+                forbidInPlayer: new[] { "VENDOR_BRIDGE_READY", "X" },
                 addToGlobal: new[] { "TEST_MODE" });
 
-            Assert.AreEqual("UNITY_MCP_READY;X", data[DefineGuard.MustBeAbsentKey]);
+            Assert.AreEqual("VENDOR_BRIDGE_READY;X", data[DefineGuard.MustBeAbsentKey]);
             Assert.AreEqual("TEST_MODE", data[DefineGuard.MustBePresentKey]);
         }
 
@@ -117,9 +117,9 @@ namespace UnicoStudio.BuildSystem.Tests
         {
             var data = new Dictionary<string, string>();
             DefineGuard.RecordPlan(data,
-                new[] { "UNITY_MCP_READY" }, new[] { "TEST_MODE" });
+                new[] { "VENDOR_BRIDGE_READY" }, new[] { "TEST_MODE" });
 
-            CollectionAssert.AreEqual(new[] { "UNITY_MCP_READY" },
+            CollectionAssert.AreEqual(new[] { "VENDOR_BRIDGE_READY" },
                 DefineGuard.ParsePlanList(data, DefineGuard.MustBeAbsentKey));
             CollectionAssert.AreEqual(new[] { "TEST_MODE" },
                 DefineGuard.ParsePlanList(data, DefineGuard.MustBePresentKey));

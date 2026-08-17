@@ -51,6 +51,7 @@ namespace UnicoStudio.BuildSystem.Editor
             new SplashLogoCheck(),
             new TestModeConsistencyCheck(),
             new DefinePlanCheck(),
+            new StripPackagesCheck(),
             new TestModeDefineRenameCheck(),
             new BumpConsistencyCheck(),
             new CdnReminderCheck(),

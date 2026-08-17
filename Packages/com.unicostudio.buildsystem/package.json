@@ -1,6 +1,6 @@
 {
   "name": "com.unicostudio.buildsystem",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "displayName": "Unico Build System",
   "description": "Single-panel build automation for Unico mobile games: reload-safe build jobs, pre-flight checks, versioned Addressables content updates, artifact naming, and crash recovery.",
   "unity": "6000.0",

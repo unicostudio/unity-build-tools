@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -43,23 +44,86 @@ namespace UnicoStudio.BuildSystem.Editor
 
             // The plan is re-verified by PlayerBuildStage against the ACTUAL globals right
             // before BuildPlayer: the reload this write queues wakes third-party
-            // [InitializeOnLoad] code that can fight the plan (measured: Unity-MCP re-adds
-            // UNITY_MCP_READY on that very reload). ctx.Data survives the reload.
+            // [InitializeOnLoad] code that can fight the plan (measured 2026-08-13: a
+            // third-party dependency resolver re-added the very define this build had just
+            // stripped — see CHANGELOG 0.11.0). ctx.Data survives the reload.
             DefineGuard.RecordPlan(ctx.Data, delta.ForbidInPlayer, delta.AddToGlobal);
 
-            // The kind rule's add and every removal share ONE global write, so a build pays at most
-            // one reload here (the orchestrator detects the change and resumes at the next stage).
-            // Both directions are build-scoped: the snapshot restore in Finish puts the developer's
-            // exact define string back, on success, on failure, and via crash recovery.
-            var next = NextGlobalDefines(current, delta.AddToGlobal, delta.RemoveFromGlobal);
-            if (next != string.Join(";", current))
+            // StripPackages and the define write must land ATOMICALLY, before the single
+            // combined reload: measured (spec T-probe, 2026-08-17), removing the package
+            // and the define in separate steps breaks compilation — the surviving half
+            // sees an impossible world. The auto-refresh bracket makes Unity plan ONE
+            // compile instead of racing the define write against the PackageCache removal.
+            var strippedPackages = new List<string>();
+            var globalsWritten = false;
+            AssetDatabase.DisallowAutoRefresh();
+            try
             {
-                PlayerSettings.SetScriptingDefineSymbols(nbt, next);
-                if (delta.AddToGlobal.Length > 0)
-                    ctx.AddStep($"Defines +{string.Join(",", delta.AddToGlobal)} (global, restored after the build)");
-                if (delta.RemoveFromGlobal.Length > 0)
-                    ctx.AddStep($"Defines -{string.Join(",", delta.RemoveFromGlobal)} (global)");
+                var stripPackages = cfg ? cfg.StripPackages : null;
+                if (stripPackages is { Length: > 0 })
+                    strippedPackages = StripManifestPackages(ctx, stripPackages);
+
+                // The kind rule's add and every removal share ONE global write, so a build pays at
+                // most one reload here (the orchestrator detects the change and resumes at the next
+                // stage). Both directions are build-scoped: the snapshot restore in Finish puts the
+                // developer's exact define string back, on success, on failure, and via crash
+                // recovery; stripped packages come back through PackageStripGuard the same way.
+                var next = NextGlobalDefines(current, delta.AddToGlobal, delta.RemoveFromGlobal);
+                if (next != string.Join(";", current))
+                {
+                    globalsWritten = true;
+                    PlayerSettings.SetScriptingDefineSymbols(nbt, next);
+                    if (delta.AddToGlobal.Length > 0)
+                        ctx.AddStep($"Defines +{string.Join(",", delta.AddToGlobal)} (global, restored after the build)");
+                    if (delta.RemoveFromGlobal.Length > 0)
+                        ctx.AddStep($"Defines -{string.Join(",", delta.RemoveFromGlobal)} (global)");
+                }
+
+                if (strippedPackages.Count > 0)
+                    UnityEditor.PackageManager.Client.Resolve();
             }
+            finally
+            {
+                AssetDatabase.AllowAutoRefresh();
+            }
+
+            // Explicit pump, outside the bracket: AllowAutoRefresh does not replay the
+            // refresh it suppressed, and batchmode has no editor ticks that would — the
+            // E2E without this line wedged until the CI deadline with the recompile never
+            // starting (defines-hash changed, reload never landed), for plain StripDefines
+            // builds too, not just package strips.
+            if (globalsWritten || strippedPackages.Count > 0)
+                AssetDatabase.Refresh();
+
+            // The resolve's recompile carries no define delta, so the defines-hash in Advance
+            // cannot see it — this is the Q5 signal path the reload-request flag exists for.
+            if (strippedPackages.Count > 0)
+                ctx.RequestReload();
+        }
+
+        // Backs up manifest+lock (job-stamped, ContentStateGuard pattern), edits the manifest
+        // through the unit-tested remover, and reports the strip as a step. Returns the ids
+        // actually removed — absent ids are per-package no-ops the preflight already named.
+        private static List<string> StripManifestPackages(BuildContext ctx, IReadOnlyList<string> stripPackages)
+        {
+            const string manifestPath = "Packages/manifest.json";
+            const string lockPath = "Packages/packages-lock.json";
+
+            var manifestText = File.ReadAllText(manifestPath);
+            var (nextText, removed) = PackageStripGuard.RemoveDependencies(manifestText, stripPackages);
+            if (removed.Count == 0) return removed;
+
+            Directory.CreateDirectory("Library/UnicoBuild");
+            var manifestBackup = "Library/UnicoBuild/manifest_backup.json";
+            var lockBackup = "Library/UnicoBuild/packages_lock_backup.json";
+            File.Copy(manifestPath, manifestBackup, overwrite: true);
+            if (File.Exists(lockPath)) File.Copy(lockPath, lockBackup, overwrite: true);
+            else lockBackup = "";
+            PackageStripGuard.Arm(manifestBackup, lockBackup, BuildJobState.Load().StartedTicksUtc);
+
+            File.WriteAllText(manifestPath, nextText);
+            ctx.AddStep($"Packages -{string.Join(",", removed)} (build-scoped, restored after the build)");
+            return removed;
         }
 
         // Pure global-define core (unit-tested): removals first, then additions appended in order,
