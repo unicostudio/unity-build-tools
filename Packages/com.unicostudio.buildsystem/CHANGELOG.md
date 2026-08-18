@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.3] - 2026-08-18
+
+### Fixed
+- The "Build Hooks" sample now actually ships. Every tag since the samples entry existed
+  advertised `Samples~/Hooks` (keystore env injection + symbols-upload skeleton) in the
+  Package Manager, but the folder had never been tracked: a machine-local global gitignore
+  rule (the emacs-backup pattern `*~`) matches `Samples~` directory names and silently kept
+  the files out of every commit, so importing the sample was an empty no-op for all
+  consumers. Surfaced by the 0.12.3-eve release-readiness tag audit — compile/test
+  verification could never see it, because nothing referenced the sample's code. Files are
+  force-added; the tag tree now carries them (verified with `git ls-tree`).
+
 ## [0.12.2] - 2026-08-18
 
 Adoption-readiness release (measured against a three-way audit of what a newcomer can

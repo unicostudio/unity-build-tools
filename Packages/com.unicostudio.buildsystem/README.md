@@ -5,7 +5,7 @@ Single-panel control for reproducible Test and Release builds of Unico mobile ga
 Install (UPM, git URL — pin to a tag):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.2
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.3
 ```
 
 The repo is private: UPM resolves git URLs through the system git, so the machine needs
