@@ -67,6 +67,9 @@ README).
 
 Where the docs live:
 
+- **New project? Start with [`docs/adoption-guide.md`](docs/adoption-guide.md)** — the
+  step-by-step checklist (install, settings assets, which sample to import when, Addressables
+  wiring, first build).
 - Each package's `README.md` is the feature reference; its `CHANGELOG.md` carries the
   per-release rationale (often with the measurements that motivated a change).
 - `_Info.md` files inside `Packages/com.unicostudio.buildsystem/` folders are per-module notes:
