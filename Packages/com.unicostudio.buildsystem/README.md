@@ -2,6 +2,19 @@
 
 Single-panel control for reproducible Test and Release builds of Unico mobile games on Android and iOS. Replaces the manual, error-prone version / define / Addressables juggling that used to happen before every build.
 
+Install (UPM, git URL — pin to a tag):
+
+```
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.2
+```
+
+The repo is private: UPM resolves git URLs through the system git, so the machine needs
+GitHub read access to `unicostudio/unity-build-tools` with non-interactive credentials (a
+PAT in the git credential helper, or the SSH URL form). Add
+`"testables": ["com.unicostudio.buildsystem"]` to the manifest so the package's EditMode
+tests run in the consumer. The monorepo README documents the migration path and the
+per-package tag convention.
+
 Entry point:
 - `UnicoStudio ▸ BuildPanel` opens `BuildPanelWindow` (Editor/UI). It assembles a `BuildRequest`, runs pre-flight checks for display, and on Build calls `UnicoBuildService.Start`.
 
@@ -16,6 +29,10 @@ Folder map:
 - `Editor/UI/` — the build panel window.
 - `Editor/Hooks/` — `UnicoBuildPreprocessor`, the legacy modal-dialog warning system. It runs for MANUAL (non-panel) builds only: it returns immediately in batchmode and whenever `BuildSession.IsBuildingViaPanel` is set, so panel and CLI builds never see its dialogs. Kept because manual `File > Build Settings > Build` still happens and its checks are the only guard on that path.
 - `Tests/Editor/` — EditMode tests for the module (`UnicoStudio.BuildSystem.Tests`).
+- `Samples~/` — importable host-side samples: `Hooks` (keystore env injection, symbols-upload
+  skeleton) and `VersionTrackerGlue` (the PostSuccess step coupling this package with
+  `com.unicostudio.versiontracker` — see that sample's README; import it if the project uses
+  both packages, or metadata freshness-verification silently never runs).
 
 End-to-end flow:
 1. The panel builds a `BuildRequest` (platform, kind, version, bump toggles, addressables mode, outputs, compression, label, output folder).
@@ -31,6 +48,26 @@ Key rules:
 - **Why global and not `extraScriptingDefines`:** editor assemblies are compiled with the *active build target's* global defines, and `extraScriptingDefines` is a player-compile parameter that never reaches them. Everything that participates in a build from the editor side — `IPreprocessBuildWithReport` / `IPostprocessBuildWithReport` callbacks, host build steps, the Addressables content build — would otherwise compile for the opposite kind whenever the target's committed globals disagree with the requested kind. The classic damage: a Test build for a platform that never had the define committed, whose plist/manifest post-processor then writes production credentials into a test artifact. **No project has to commit anything** — the build makes the editor match its own intent and the `DevStateSnapshot` puts the developer's exact state back afterwards.
 - The cost is paid only when reality disagrees with the plan. A Test build whose target already carries the define, and a Release build whose target does not, write nothing and reload nothing. Otherwise it is one recompile + reload before the build and one after — exactly what Release builds have always paid.
 - Each `BuildTargetConfig` may additionally declare `ExtraDefines` (player-build-only additions, via `extraScriptingDefines`; deliberately NOT promoted to global — they describe the player, not the build's intent) and `StripDefines` (build-scoped global removals — e.g. `UNITY_MCP_READY`). The kind rule's global add and every global removal share ONE `SetScriptingDefineSymbols` call, and the snapshot in `Finish` restores them on success, failure, and crash recovery.
+- `BuildTargetConfig.StripPackages` (0.12.0) is the package-level sibling of `StripDefines`: the
+  listed UPM package ids are removed from `Packages/manifest.json` for the build's duration and
+  restored **byte-exact** afterwards (`PackageStripGuard` — job-stamped backups, restore on
+  success, failure and crash recovery). It exists for third-party packages whose editor code
+  fights the define plan across reloads. Preconditions are preflight-checked: a listed package
+  must be exact-pinned (Warn) and must have no dependents in the lock (Block). Cost ≈ +30 s per
+  build. Spec with the measurements: `docs/specs/2026-08-17-strippackages-design.md`.
+- Defense in depth around the define plan (because third-party `[InitializeOnLoad]` and UPM
+  package-event handlers can rewrite defines while a build is in flight): `DefineGuard` (0.11.0)
+  re-verifies the recorded plan against the ACTUAL globals right before `BuildPlayer` and fails
+  the build rather than shipping a violated plan; `DefineReassertWatcher` (0.12.1) re-asserts
+  the written plan every editor tick in the window between the stage's write and the reload
+  landing, so an in-session counter-write can never leave a half-state. Both are internal — no
+  configuration surface. The guard is a stateless verification (nothing to disarm); the
+  watcher's subscription dies with the reload on the normal path, and `Finish` disarms it on
+  the same-domain exit paths before the dev-state restore.
+- Config discovery is visible in preflight: `ConfigPresenceCheck` names the resolved
+  `BuildTargetConfig` on Pass, and Warns (advisory — strict-exempt) when nothing matches, because
+  a config-less build otherwise runs "successfully" on the kind-based fallback with no
+  ExtraDefines/StripDefines/StripPackages and nothing saying so.
 - Panel builds set `BuildSession.IsBuildingViaPanel` so the legacy `UnicoBuildPreprocessor` modal dialogs are suppressed (the panel already ran non-blocking pre-flight).
 
 Host build hooks:
@@ -50,6 +87,10 @@ Host build hooks:
   that run only, never the runs queued behind it.
 - Keep hooks stateless: instances are re-created after every domain reload; carry data in
   `ctx.Data` (string→string, persisted) instead of fields.
+- A hook that queues a recompile WITHOUT a global-define delta (a manifest edit, an
+  `AssetDatabase.Refresh` over changed sources) must call `ctx.RequestReload()`: the
+  orchestrator detects pending reloads via the defines-hash, which cannot see a define-neutral
+  recompile, and would otherwise resume the next stage on stale assemblies.
 - Keep exactly one copy of a hook class: the same class reaching TypeCache from two assemblies
   (a Package Manager sample imported AND copied into an `Assets/Editor` folder) is logged and
   de-duplicated, but the copy is dead weight.
@@ -90,6 +131,21 @@ CI usage:
   | 0 | Success |
   | 1 | Build failure (including a preflight `Block`) |
   | 2 | Timeout, CLI parse error, or a watcher failure while concluding |
+- The result JSON (`-resultFile`, default `Builds/result.json`) is the machine-readable outcome —
+  parse it, not the log. Fields (`BuildResult`, serialized by `JsonUtility`):
+
+  | Field | Type | Meaning |
+  | --- | --- | --- |
+  | `Success` | bool | The job's outcome; PostSuccess step failures do NOT flip it |
+  | `Error` | string | Failure message; empty on success. On exit 2, its prefix distinguishes timeout from conclusion trouble |
+  | `DurationSeconds` | double | Wall time; `0` = legacy result |
+  | `Steps` | string[] | Human-readable step log (defines written, packages stripped, bumps…) |
+  | `Warnings` | string[] | Preflight warnings the run proceeded over |
+  | `Artifacts` | string[] | Artifact paths only — kept for back-compat; prefer `TypedArtifacts` |
+  | `TypedArtifacts` | {`Path`, `Kind`}[] | `Kind` is serialized as an INTEGER (`JsonUtility` writes enum values): `0`=Unknown, `1`=Apk, `2`=Aab, `3`=SymbolsZip, `4`=XcodeProject, `5`=AddressablesContent, `6`=Metadata (the mapping is pinned by a test — members are only ever appended) |
+  | `VersionName` / `BuildCode` | string | On success: the produced build's values (post-bump). On failure they are read AFTER the rollback, so they carry the developer's original (pre-build) versions — only trust them when `Success` is true. `BuildCode` is Android version code / iOS build number as text |
+  | `AddressablesVersion` | int | Content version; `-1` = store missing or Addressables unused |
+  | `StartedUtc` / `EndedUtc` | string | ISO 8601 round-trip (`"o"`); empty = legacy result |
 - Keystore secrets are read from the environment, never from committed sources:
   `UNICO_KEYSTORE_PASS` / `UNICO_KEYALIAS_PASS`. Unset, this is a no-op and `KeystoreCheck` still
   blocks an unsigned Android Release cleanly.

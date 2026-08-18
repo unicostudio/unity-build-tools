@@ -43,6 +43,10 @@ namespace UnicoStudio.BuildSystem.Editor
             new VersionFormatCheck(),
             new VersionDowngradeCheck(),
             new OutputSelectionCheck(),
+            // Before the config consumers (BundleIdCheck, DefinePlanCheck, StripPackagesCheck):
+            // its Pass names the config they are all about to read, its Warn explains why they
+            // are all about to no-op.
+            new ConfigPresenceCheck(),
             new BundleIdCheck(),
             new KeystoreCheck(),
             new PlatformMatchCheck(),

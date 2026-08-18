@@ -14,7 +14,10 @@
 #      (A pin to an older tag is a WARN — bumping hosts is a deliberate act —
 #      but a lock hash that does not match its pinned tag is a FAIL.)
 #   3. Glue byte-parity: VersionTrackerArtifactStep.cs is byte-identical across
-#      all hosts (iron rule 2).
+#      all hosts (iron rule 2), and the copy the buildsystem package ships as an
+#      importable sample (Samples~/VersionTrackerGlue) matches the origin host
+#      (drift there is a WARN — hosts consume tags, so the fix is refreshing the
+#      sample at the next buildsystem release, not blocking today's push).
 #   4. StripDefines convention: every BuildTargetConfig asset in every host
 #      lists the required strip define (UNITY_MCP_READY). The fleet convention
 #      is enforced nowhere else — this check is the enforcement.
@@ -179,6 +182,20 @@ else
       fi
     done
   fi
+fi
+
+# 3b. The package ships the same glue as an importable sample so new adopters can
+# discover it; the hosts stay the origin (iron rule 2). Runs with any host count.
+sample_glue="$TOOLS/Packages/com.unicostudio.buildsystem/Samples~/VersionTrackerGlue/Editor/VersionTrackerArtifactStep.cs"
+origin_glue="${HOST_PATHS[0]}/$GLUE_REL"
+if [[ ! -f "$sample_glue" ]]; then
+  warn "3. package sample glue missing: $sample_glue"
+elif [[ ! -f "$origin_glue" ]]; then
+  warn "3. sample-parity probe skipped: no host glue at $origin_glue"
+elif cmp -s "$origin_glue" "$sample_glue"; then
+  pass "3. package sample glue byte-identical to ${HOST_NAMES[0]} (Samples~/VersionTrackerGlue)"
+else
+  warn "3. package sample glue differs from ${HOST_NAMES[0]} ($GLUE_REL) — refresh Samples~/VersionTrackerGlue at the next buildsystem release"
 fi
 
 # --- 4. StripDefines convention on BuildTargetConfig assets -------------------

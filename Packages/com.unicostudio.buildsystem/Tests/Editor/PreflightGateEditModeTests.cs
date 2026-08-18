@@ -49,8 +49,8 @@ namespace UnicoStudio.BuildSystem.Tests
         [Test]
         public void Strict_ExemptFlag_IsMatchedByIndex_NotOnlyAtSlotZero()
         {
-            // Production hands Gate a 17-entry list where the exempt checks sit at indexes 12 and
-            // 16 — never 0. Every other case in this fixture puts the exempt entry at index 0,
+            // Production hands Gate a 19-entry list where the exempt checks sit at indexes 6, 13
+            // and 18 — never 0. Every other case in this fixture puts the exempt entry at index 0,
             // where a strictExempt[0] typo behaves identically to strictExempt[i] (measured: that
             // mutation left the whole suite green). These two shapes pin the per-index pairing.
             var (block, _) = Gate(WarnPolicy.Strict,
@@ -83,14 +83,17 @@ namespace UnicoStudio.BuildSystem.Tests
         }
 
         [Test]
-        public void StrictExemptChecks_AreExactlyCdnReminderAndTestModeConsistency()
+        public void StrictExemptChecks_AreExactlyTheThreeAdvisoryOnes()
         {
             // Enumerate the real registration: a new check defaults to non-exempt (it blocks under
             // Strict), so this must fail loudly the day someone adds one that opts out.
+            // Current set: CdnReminder (CI uploads itself), TestModeConsistency (self-healing),
+            // ConfigPresence (config absence is a legitimate adoption stage, never a gate).
             var exempt = PreflightRunner.Default().Where(c => c.IsStrictExempt)
                 .Select(c => c.GetType().Name).OrderBy(n => n, System.StringComparer.Ordinal).ToArray();
             CollectionAssert.AreEqual(
-                new[] { nameof(CdnReminderCheck), nameof(TestModeConsistencyCheck) }, exempt);
+                new[] { nameof(CdnReminderCheck), nameof(ConfigPresenceCheck),
+                        nameof(TestModeConsistencyCheck) }, exempt);
         }
     }
 }

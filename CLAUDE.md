@@ -3,10 +3,10 @@
 UPM monorepo. Repo root is a REAL Unity 6000.0.62f1 dev project (open it to compile/test the
 packages in place). Two packages under `Packages/`:
 
-- `com.unicostudio.buildsystem` (current: 0.10.2) — panel + headless build pipeline, full
+- `com.unicostudio.buildsystem` (current: 0.12.2) — panel + headless build pipeline, full
   EditMode suite under `Tests/Editor/`.
-- `com.unicostudio.versiontracker` (current: 1.6.0) — build-info export; **has no tests yet**
-  (known gap, CI matrix has an empty cell until fixed).
+- `com.unicostudio.versiontracker` (current: 1.7.2) — build-info export; EditMode suite (21)
+  since 1.7.0, wired into the CI gate.
 
 The user (Tolgahan) communicates in **Turkish**; write code/docs/commits in English.
 Approval gates: pushes, merges, and tag publishes happen ONLY on explicit instruction.
@@ -31,7 +31,7 @@ On any problem: STOP and consult — do not improvise around a failure.
 ## Release ritual (per package)
 
 `package.json` version bump + `CHANGELOG.md` entry + commit + tag `<package-id>/<version>`
-(e.g. `com.unicostudio.buildsystem/0.10.2`) + push main and the tag. Then per host:
+(e.g. `com.unicostudio.buildsystem/0.12.2`) + push main and the tag. Then per host:
 edit the manifest pin, run headless `-runTests -testPlatform EditMode`, verify lock hash ==
 tag commit, commit manifest+lock together.
 
@@ -40,8 +40,8 @@ tag commit, commit manifest+lock together.
 - Headless runs need the target project's Unity editor CLOSED (check `pgrep -f MacOS/Unity`).
 - `-batchmode -nographics -quit` for compile checks; `-runTests -testPlatform EditMode
   -testResults <xml>` for suites (never combine `-runTests` with `-quit`).
-- Suite baselines (2026-08-07): this repo 247/0 (buildsystem 246 + 1 Unity Addressables doc
-  stub); BTA 310/0; BT5 564/0. A count drift is a finding, not noise — name it.
+- Suite baselines (2026-08-18): this repo 318/0 (buildsystem 296 + versiontracker 21 + 1 Unity
+  Addressables doc stub); BTA 354/0; BT5 608/0. A count drift is a finding, not noise — name it.
 
 ## Consumers (hosts)
 
@@ -65,16 +65,21 @@ Result JSON at `-resultFile` (default `Builds/result.json`). Keystore secrets vi
 `-bumpBuildCode` / `-bumpAddressables` are passed. Use `-versionName` (not `-version` — Unity
 owns that flag).
 
-## CI program backlog (pre-CI audit, 2026-08-07)
+## CI program backlog (updated 2026-08-18)
 
-1. Content-state lineage decision FIRST: `addressables_content_state.bin` is gitignored in both
-   hosts (machine-local) — CI content builds need a storage/retrieval strategy.
+Resolved since the 2026-08-07 audit: content-state lineage (bins committed to hosts, CI
+invariant 6 guards them; BT5 Android lineage KNOWN-LOST — never Update-Previous it), the iOS
+Test build debt (`#if TEST_MODE` compiles clean for iOS), Q1 (BuildPlayer pumps zero update
+ticks in batchmode; recorded in `Editor/Core/_Info.md`), the versiontracker suite, and the
+Unity-MCP define poisoning (0.11.0 DefineGuard + 0.12.0 StripPackages + 0.12.1
+DefineReassertWatcher; both hosts adopted, mains merged).
+
+Open:
+1. Runner bring-up: self-hosted Mac registered with the `unity-mac` label + Unity Pro seat +
+   `CI_REPO_READ_TOKEN` secret; the first `workflow_dispatch` validates both lanes.
 2. CDN upload as a PostSuccess step — `CdnReminderCheck`'s strict-exemption is premised on CI
-   doing the upload; building CI without it falsifies that premise.
-3. First real gate should be an iOS Test build — `#if TEST_MODE` blocks have never compiled for
-   iOS (v0.7.0 verification debt); a strict-Release batchmode run is also still unexercised.
-4. The permanent open questions in `Editor/Core/_Info.md` (Q1 update-pump re-entrancy, Q2
-   InitializeOnLoad ordering, Q6 pre-Start throw → timeout) want live experiments — design CI
-   gates to answer them.
-5. versiontracker test suite (empty CI cell); BT5 `feature/economy-rebalance-migration` is
-   READY-TO-MERGE but unmerged (host-side, user's call).
+   doing the upload; needs the DevOps SFTP details.
+3. Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout) in `Editor/Core/_Info.md`
+   still want live experiments — design CI gates to answer them.
+4. BT5 `feature/economy-rebalance-migration` is READY-TO-MERGE but unmerged (host-side,
+   user's call). A strict-Release batchmode run also remains unexercised.

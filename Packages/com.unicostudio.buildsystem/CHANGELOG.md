@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.12.2] - 2026-08-18
+
+Adoption-readiness release (measured against a three-way audit of what a newcomer can
+self-discover): no behavior change for correctly configured projects.
+
+### Added
+- **`ConfigPresenceCheck`** (preflight, strict-exempt): Pass names the `BuildTargetConfig`
+  the build resolved; Warn explains the fallback when no config matches (or none exist).
+  The zero-config trap was invisible before: a config-less project builds "successfully"
+  on the kind-based profile fallback with no ExtraDefines/StripDefines/StripPackages and
+  nothing saying so — absence is the one failure mode no config-consuming check can flag.
+  Advisory by design (`IsStrictExempt`): a deliberately config-less project is a
+  legitimate adoption stage, so strict CI builds of one must stay possible. Suite
+  290 -> 296 (the strict-exempt-set guard test caught the policy change, as built to).
+- **VersionTracker Glue sample** (`Samples~/VersionTrackerGlue`): the host-side
+  PostSuccess step coupling this package with `com.unicostudio.versiontracker`
+  (freshness-verified metadata attached to the build result). Previously the glue existed
+  only in consumer repos and a new adopter could not know it should exist; without it the
+  degradation is silent (no Stale/Missing verdicts, no Metadata artifact). Requires the
+  tracker >= 1.6.0; the sample README documents the committed-per-release convention that
+  gives `Stale` its meaning.
+- Package Manager metadata: `documentationUrl` / `changelogUrl` / `licensesUrl` and an
+  in-package `LICENSE.md` (matching the versiontracker package's surface), so the UPM
+  window links to the docs instead of dead-ending.
+
+### Fixed
+- `AddressablesVersionStore` fresh-asset default is now `1` (was `11` — a shipped game's
+  live counter had leaked into the template default, so a new adopter's content lineage
+  started at v11 unexplained). Existing assets are unaffected: serialized values win.
+
+### Docs
+- README caught up from the 0.10.x surface to 0.12.1: `StripPackages` (with its preflight
+  preconditions and cost), the `DefineGuard` + `DefineReassertWatcher` defense stack,
+  `ctx.RequestReload()` for hook authors, the result-JSON schema table (previously
+  readable only in `BuildResult.cs`), an Install section (git URL + pin + testables +
+  private-repo access prerequisite), and the `Samples~/` map entry.
+
 ## [0.12.1] - 2026-08-17
 
 ### Fixed
@@ -46,7 +83,7 @@
   stage (or hook) tell `Advance` about a queued reload the defines-hash cannot see — the
   StripPackages resolve is the first user. Host-initiated recompiles outside the pipeline
   remain Q5-open.
-- Suite: 246 -> 280 (Q5 flag semantics, PackageStripGuard cores incl. dangling-comma
+- Suite: 257 -> 280 (Q5 flag semantics, PackageStripGuard cores incl. dangling-comma
   repair and exact-pin/dependents heuristics, StripPackagesCheck evaluation), all
   red-first with mutation probes.
 
@@ -71,6 +108,8 @@
     in the opposite direction.
   - Pure decision core (`DefineGuard.FindViolation`) plus plan record/parse helpers are
     unit-tested (11 tests, mutation-probed kill-then-red); suite goes 246 -> 257.
+
+## [0.10.2] - 2026-08-07
 
 ### Fixed
 - Panel artifact "Show" now reveals the normalized path. Producers compose artifact paths their

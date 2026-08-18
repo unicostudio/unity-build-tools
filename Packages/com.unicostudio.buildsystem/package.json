@@ -1,15 +1,23 @@
 {
   "name": "com.unicostudio.buildsystem",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "displayName": "Unico Build System",
-  "description": "Single-panel build automation for Unico mobile games: reload-safe build jobs, pre-flight checks, versioned Addressables content updates, artifact naming, and crash recovery.",
+  "description": "Single-panel build automation for Unico mobile games: reload-safe build jobs, pre-flight checks, versioned Addressables content updates, build-scoped define/package stripping, artifact naming, crash recovery, and a headless CI entry point.",
   "unity": "6000.0",
+  "documentationUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.buildsystem/README.md",
+  "changelogUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.buildsystem/CHANGELOG.md",
+  "licensesUrl": "https://github.com/unicostudio/unity-build-tools/blob/main/Packages/com.unicostudio.buildsystem/LICENSE.md",
   "dependencies": {},
   "samples": [
     {
       "displayName": "Build Hooks",
       "description": "Host-side samples: keystore passwords from environment variables (applied on editor load, BEFORE preflight — deliberately not a hook) and a post-success symbols-upload [UnicoBuildStep] skeleton.",
       "path": "Samples~/Hooks"
+    },
+    {
+      "displayName": "VersionTracker Glue",
+      "description": "PostSuccess step wiring com.unicostudio.versiontracker (>= 1.6.0 required) into the build result: verifies the tracker metadata was freshly written for this run and attaches it as a Metadata artifact. Compiles only with the tracker installed.",
+      "path": "Samples~/VersionTrackerGlue"
     }
   ]
 }

@@ -17,6 +17,7 @@ Contents:
 - `DefinePlanCheckEditModeTests` — issue→severity mapping and the Pass-message define plan.
 - `VersionFormatCheckEditModeTests` — semver `Pass` / `Block` cases.
 - `TestModeConsistencyCheckEditModeTests` — define-vs-kind consistency severities.
+- `ConfigPresenceCheckEditModeTests` — the config-discovery fallback made visible: zero configs Warn naming the Create-menu path (null list treated as empty), a present-but-no-match set Warns naming the requested platform/kind AND what exists (both partial matches pinned: same platform other kind, and same kind other platform), a match Passes naming the resolved asset, and null entries in the list are skipped, not matched or crashed on.
 - `BuildConfigCatalogEditModeTests` — config lookup by platform+kind, plus `ResolveProfile`: a matching config's `Profile` wins, and with no matching config the kind fallback is `Test`→`Test` / `Release`→`Production`. Duplicate handling matches the sibling loaders: two configs for the same platform+kind log an error naming both and the FIRST wins (deterministic because `LoadAll` ordinal-sorts by path — that half is AssetDatabase integration and is pinned by reading, not by a unit test, per this file's `LoadAll` note).
 - `BuildContextEditModeTests` — context accumulation behavior.
 - `BuildPlatformExtensionsEditModeTests` — `BuildPlatform` → `BuildTarget` / `BuildTargetGroup` / `NamedBuildTarget` mappings.
@@ -37,8 +38,9 @@ Contents:
 - `PreflightGateEditModeTests` — `PreflightRunner.Gate` policy behavior: Interactive warns never
   block; Strict blocks non-exempt Warn; Strict still lets a strict-exempt Warn through while
   recording it; a `Block` wins even when a later entry would also warn; the first blocking
-  message wins in registration order; `CdnReminderCheck` and `TestModeConsistencyCheck` are the
-  only `IsStrictExempt` checks.
+  message wins in registration order; `CdnReminderCheck`, `ConfigPresenceCheck` and
+  `TestModeConsistencyCheck` are the only `IsStrictExempt` checks (the guard test pins the
+  exact set so a new opt-out is a deliberate, reviewed act).
 - `UnicoBuildCliParseEditModeTests` — CLI flag parsing: a full release invocation maps every
   field, Unity's own args (`-batchmode`, `-projectPath`, ...) are ignored, the CI default is no
   bump unless flagged, `-buildCode` pins the value and disables `-bumpBuildCode` regardless of

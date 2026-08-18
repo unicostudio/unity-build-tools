@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.2] - 2026-08-18
+
+* **DOCS** (no code changes): the README now carries what previously lived only in this
+  changelog or in consumer repos — the public API surface (`GetBuildInfoPath`,
+  `ExportBuildInfo` and its `ExportBuildInfoAsync` shim, `GetSavedBuildInfo` /
+  `GetSavedBuildInfoJson`) with the 1.7.0 main-thread constraint stated at the API it
+  constrains; the deliberate red "failed or cancelled" log line; the
+  commit-outputs-per-shipped-release convention (and why a dev playground gitignores the
+  same folder); the `testables` line for running the suite in consumers; the private-repo
+  access prerequisite; and a pointer to the buildsystem's VersionTracker Glue sample.
+
 ## [1.7.1] - 2026-08-17
 
 * **FIX**: the `Tests/` folder shipped in 1.7.0 was missing its own `.meta` file, so

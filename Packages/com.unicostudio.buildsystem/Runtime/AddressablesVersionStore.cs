@@ -11,7 +11,8 @@ namespace UnicoStudio.BuildSystem
         menuName = "Unico/Build/Addressables Version Store")]
     public sealed class AddressablesVersionStore : ScriptableObject
     {
-        [SerializeField] private int version = 11;
+        // Default is for FRESH assets only — existing assets keep their serialized value.
+        [SerializeField] private int version = 1;
 
         public int Version
         {
