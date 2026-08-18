@@ -40,8 +40,9 @@ tag commit, commit manifest+lock together.
 - Headless runs need the target project's Unity editor CLOSED (check `pgrep -f MacOS/Unity`).
 - `-batchmode -nographics -quit` for compile checks; `-runTests -testPlatform EditMode
   -testResults <xml>` for suites (never combine `-runTests` with `-quit`).
-- Suite baselines (2026-08-18): this repo 318/0 (buildsystem 296 + versiontracker 21 + 1 Unity
-  Addressables doc stub); BTA 354/0; BT5 608/0. A count drift is a finding, not noise — name it.
+- Suite baselines (2026-08-18, post pin-bump to 0.12.3/1.7.2): this repo 318/0 (buildsystem 296
+  + versiontracker 21 + 1 Unity Addressables doc stub); BTA 360/0 (host 64 + buildsystem 296);
+  BT5 614/0 (host 318 + buildsystem 296). A count drift is a finding, not noise — name it.
 
 ## Consumers (hosts)
 
