@@ -18,12 +18,11 @@
 - Add this package to your project using Unity's Package Manager.  
    Paste the following Git URL into the "Add package from Git URL" option (pin to a tag for
    anything past local experimentation):
-   `https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.2`
-- The repo is private: UPM resolves git URLs through the system git, so the machine needs
-   GitHub read access to `unicostudio/unity-build-tools` with non-interactive credentials
-   (a PAT in the git credential helper, or the SSH URL form).
+   `https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.3`
+- The repo is public — the URL works in any Unity Package Manager with plain system git.
 - To run the package's EditMode tests (21) in your project, add
-   `"testables": ["com.unicostudio.versiontracker"]` to `Packages/manifest.json`.
+   `"testables": ["com.unicostudio.versiontracker"]` to `Packages/manifest.json`
+   (needs `com.unity.test-framework` in the project, which Hub templates include).
 
 ---
 

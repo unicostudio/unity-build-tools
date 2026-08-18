@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.4] - 2026-08-18
+
+### Docs
+- README correction: the 0.12.2 install section claimed the repo is private and demanded
+  GitHub access + credentials — measured false (an unauthenticated request returns 200; the
+  repo is public). The claim came from an audit assertion that was never verified with an
+  unauthenticated probe. The install note now says the URL works with plain system git, and
+  folds in the `com.unity.test-framework` prerequisite for running the package's tests via
+  `testables` (measured: a minimal project without it fails compile on the test assemblies;
+  Hub templates include it). No code changes.
+
 ## [0.12.3] - 2026-08-18
 
 ### Fixed

@@ -3,9 +3,9 @@
 UPM monorepo. Repo root is a REAL Unity 6000.0.62f1 dev project (open it to compile/test the
 packages in place). Two packages under `Packages/`:
 
-- `com.unicostudio.buildsystem` (current: 0.12.3) — panel + headless build pipeline, full
+- `com.unicostudio.buildsystem` (current: 0.12.4) — panel + headless build pipeline, full
   EditMode suite under `Tests/Editor/`.
-- `com.unicostudio.versiontracker` (current: 1.7.2) — build-info export; EditMode suite (21)
+- `com.unicostudio.versiontracker` (current: 1.7.3) — build-info export; EditMode suite (21)
   since 1.7.0, wired into the CI gate.
 
 The user (Tolgahan) communicates in **Turkish**; write code/docs/commits in English.
@@ -31,7 +31,7 @@ On any problem: STOP and consult — do not improvise around a failure.
 ## Release ritual (per package)
 
 `package.json` version bump + `CHANGELOG.md` entry + commit + tag `<package-id>/<version>`
-(e.g. `com.unicostudio.buildsystem/0.12.3`) + push main and the tag. Then per host:
+(e.g. `com.unicostudio.buildsystem/0.12.4`) + push main and the tag. Then per host:
 edit the manifest pin, run headless `-runTests -testPlatform EditMode`, verify lock hash ==
 tag commit, commit manifest+lock together.
 

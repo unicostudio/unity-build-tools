@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.3] - 2026-08-18
+
+* **DOCS** (no code changes): README correction — the 1.7.2 install note claimed the repo is
+  private and required credentials; measured false (unauthenticated request returns 200, the
+  repo is public). Now states the URL works with plain system git, and notes the
+  `com.unity.test-framework` prerequisite for running the suite via `testables`.
+
 ## [1.7.2] - 2026-08-18
 
 * **DOCS** (no code changes): the README now carries what previously lived only in this

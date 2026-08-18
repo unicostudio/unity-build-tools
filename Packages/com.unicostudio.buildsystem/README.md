@@ -5,15 +5,13 @@ Single-panel control for reproducible Test and Release builds of Unico mobile ga
 Install (UPM, git URL — pin to a tag):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.3
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.4
 ```
 
-The repo is private: UPM resolves git URLs through the system git, so the machine needs
-GitHub read access to `unicostudio/unity-build-tools` with non-interactive credentials (a
-PAT in the git credential helper, or the SSH URL form). Add
+The repo is public — the URL works in any Unity Package Manager with plain system git. Add
 `"testables": ["com.unicostudio.buildsystem"]` to the manifest so the package's EditMode
-tests run in the consumer. The monorepo README documents the migration path and the
-per-package tag convention.
+tests run in the consumer (needs `com.unity.test-framework` in the project, which Hub
+templates include). The monorepo README documents the per-package tag convention.
 
 Entry point:
 - `UnicoStudio ▸ BuildPanel` opens `BuildPanelWindow` (Editor/UI). It assembles a `BuildRequest`, runs pre-flight checks for display, and on Build calls `UnicoBuildService.Start`.

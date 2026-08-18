@@ -15,18 +15,15 @@ Packages live under `Packages/` as embedded packages:
 
 - **Install by git URL, pin to a tag.** `main` moves as packages evolve — always append
   `#<package-id>/<version>` for anything past local experimentation.
-- **Tags are per package:** `com.unicostudio.versiontracker/1.7.2`, `com.unicostudio.buildsystem/0.12.2`. A release = version bump in
+- **Tags are per package:** `com.unicostudio.versiontracker/1.7.3`, `com.unicostudio.buildsystem/0.12.4`. A release = version bump in
   the package's `package.json` + a CHANGELOG entry + the matching tag.
 - **Packages must stay independently consumable.** A package may not reference another package in
   this repo unless it declares the dependency in its own `package.json`.
 
 ## Install
 
-**Access first:** this repo is private, and UPM resolves git URLs through the system git. A
-machine consuming these packages needs GitHub read access to `unicostudio/unity-build-tools`
-AND non-interactive git credentials — a PAT stored in the git credential helper (macOS:
-`osxkeychain`), or the SSH form of the URLs below with a loaded key. Without them the Package
-Manager shows only an opaque "unable to clone" error.
+This repo is public: the git URLs below work in any Unity Package Manager with plain system
+git — no credentials or repo access needed.
 
 **com.unicostudio.versiontracker**
 
@@ -37,7 +34,7 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 Pinned to a version (recommended):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.2
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.3
 ```
 
 > Migrating from the old repo? The package id, namespaces and layout are unchanged — replace the
@@ -53,7 +50,7 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 Pinned to a version (recommended):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.3
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.4
 ```
 
 > Consumers should also add `"testables": ["com.unicostudio.buildsystem"]` to their manifest —
