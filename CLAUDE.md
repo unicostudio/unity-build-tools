@@ -82,7 +82,10 @@ Open:
 1. Runner bring-up: self-hosted Mac registered with the `unity-mac` label + Unity Pro seat +
    `CI_REPO_READ_TOKEN` secret; the first `workflow_dispatch` validates both lanes.
 2. CDN upload as a PostSuccess step — `CdnReminderCheck`'s strict-exemption is premised on CI
-   doing the upload; needs the DevOps SFTP details.
+   doing the upload; needs the DevOps SFTP details. Ride-along niceties queued for the next
+   releases (deliberately not worth their own ritual): UnicoBuildCli wrapping `Start` in a
+   try/catch that writes a failure result before Exit(1) (see `Editor/Core/_Info.md` item 6),
+   and versiontracker's missing `"unity"` field in package.json.
 3. ~~Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout)~~ — both MEASURED
    2026-08-25 and recorded in `Editor/Core/_Info.md`: the watcher decides before the runner
    drains (one-tick deadline boundary, accepted by design), and a throw escaping `Start` is
