@@ -54,7 +54,7 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 ```
 
 > Consumers should also add `"testables": ["com.unicostudio.buildsystem"]` to their manifest —
-> a git-URL package's EditMode tests run only when listed there (303 in buildsystem; versiontracker ships its own 21 under the same rule).
+> a git-URL package's EditMode tests run only when listed there (305 in buildsystem; versiontracker ships its own 21 under the same rule).
 
 ## Working in this repo
 

@@ -358,9 +358,8 @@ namespace UnicoStudio.BuildSystem.Editor
                     }
                 }
             }
-            foreach (var r in results)
+            foreach (var r in PanelDecisions.OrderNonPassForDisplay(results))
             {
-                if (r.Severity == CheckSeverity.Pass) continue;
                 EditorGUILayout.HelpBox(r.Message,
                     r.Severity == CheckSeverity.Block ? MessageType.Error : MessageType.Warning);
             }

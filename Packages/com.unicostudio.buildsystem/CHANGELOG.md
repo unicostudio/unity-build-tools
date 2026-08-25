@@ -21,6 +21,10 @@ Panel UX release. No pipeline/CLI behavior change; one panel-only behavior chang
   previously visible only inside the collapsed checks foldout. Log-free lookup
   (`BuildConfigCatalog.Find`'s duplicate complaint is a LogError and this renders every
   repaint); `ConfigPresenceCheck` keeps owning the messaging.
+- Preflight display order: Blocks render above Warns (stable within each group) —
+  previously one Block between several Warns sat mid-list and was easy to scroll past.
+  Display-only; `PreflightRunner.Gate` semantics (first Block in registration order wins)
+  are untouched.
 - Result header polish: `TestPassed`/`TestFailed` icon and the run's start stamp next to
   the existing duration (legacy results without `StartedUtc` omit it).
 
@@ -40,7 +44,7 @@ Panel UX release. No pipeline/CLI behavior change; one panel-only behavior chang
 
 ### Internal
 - New `PanelDecisions` (Editor/UI): the panel's pure/testable surface — gating, icon set,
-  `FormatStartedLocal`, `AccentFor`. Suite 296 -> 303 (red-first; all three cores
+  `FormatStartedLocal`, `AccentFor`. Suite 296 -> 305 (red-first; the cores
   mutation-probed kill-then-red: 4 mutations -> exactly the 4 pinning tests failed).
 
 ## [0.12.4] - 2026-08-18

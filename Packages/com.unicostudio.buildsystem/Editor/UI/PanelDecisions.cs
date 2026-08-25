@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using UnityEngine;
 
 namespace UnicoStudio.BuildSystem.Editor
@@ -73,6 +75,19 @@ namespace UnicoStudio.BuildSystem.Editor
             if (!DateTime.TryParse(startedUtcIso, CultureInfo.InvariantCulture,
                     DateTimeStyles.RoundtripKind, out var utc)) return "";
             return utc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+        }
+
+        // Display order for the non-Pass preflight boxes: Blocks above Warns, registration
+        // order preserved inside each group (OrderBy is a stable sort). Display-only — the
+        // GATE semantics stay untouched: PreflightRunner.Gate already picks the first Block
+        // in registration order, and that is what the "Cannot build" dialog shows. Without
+        // this, one Block between three Warns rendered mid-list and was easy to scroll past.
+        internal static List<CheckResult> OrderNonPassForDisplay(IReadOnlyList<CheckResult> results)
+        {
+            return results
+                .Where(r => r.Severity != CheckSeverity.Pass)
+                .OrderBy(r => r.Severity == CheckSeverity.Block ? 0 : 1)
+                .ToList();
         }
 
         // Muted background tints for the kind accent (GUI.backgroundColor multiplier).

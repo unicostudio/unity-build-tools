@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnicoStudio.BuildSystem.Editor;
@@ -81,6 +82,35 @@ namespace UnicoStudio.BuildSystem.Tests
                     $"icon '{name}' did not resolve — IconContent degrades to an empty content, " +
                     "so a typo ships as an invisible hole");
             }
+        }
+
+        [Test]
+        public void OrderNonPassForDisplay_BlocksAboveWarns_StableWithinEachGroup()
+        {
+            var warnA = CheckResult.Warn("warn A");
+            var blockB = CheckResult.Block("block B");
+            var warnC = CheckResult.Warn("warn C");
+            var blockD = CheckResult.Block("block D");
+
+            var ordered = PanelDecisions.OrderNonPassForDisplay(
+                new[] { warnA, blockB, warnC, blockD });
+
+            CollectionAssert.AreEqual(
+                new[] { "block B", "block D", "warn A", "warn C" },
+                ordered.Select(r => r.Message).ToArray(),
+                "Blocks render first; registration order is preserved inside each group");
+        }
+
+        [Test]
+        public void OrderNonPassForDisplay_ExcludesPassEntries()
+        {
+            var ordered = PanelDecisions.OrderNonPassForDisplay(new[]
+            {
+                CheckResult.Pass("pass"), CheckResult.Warn("warn"), CheckResult.Block("block"),
+            });
+
+            CollectionAssert.AreEqual(new[] { "block", "warn" },
+                ordered.Select(r => r.Message).ToArray());
         }
 
         [Test]
