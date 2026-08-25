@@ -9,7 +9,7 @@ the order and the defaults. Both packages also work standalone — skip what you
 Package Manager > "Add package from git URL", pinned to a tag:
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.12.4
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.13.0
 https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.3
 ```
 

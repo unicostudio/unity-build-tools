@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.13.0] - 2026-08-25
+
+Panel UX release. No pipeline/CLI behavior change; one panel-only behavior change
+(the bump-toggle gating below).
+
+### Added
+- **Boxed, icon-headed sections** (Target / Version / Stages / Output): icons are Unity's
+  own editor icons (nothing shipped), the window consumes named constants from
+  `PanelDecisions`, and a test resolves each one on the running Unity version —
+  `IconContent` returns an empty content for an unknown name, so an unasserted icon name
+  ships as an invisible hole. Base names only (no `d_` prefix), so the skin variant is
+  auto-selected on light and dark editors alike.
+- **Kind accent**: the Target box and the Build button are tinted by build kind
+  (Test → green, Release → orange, muted) so the kind about to be built is visible at a
+  glance. Color is never the sole carrier (the kind popup and dialogs keep the text).
+  Per-user off-switch in the window-tab context menu ("Accent Colors"; `EditorPrefs`,
+  deliberately not project data).
+- **Resolved-config row** in the Target box: "Config: <asset>" or the kind-fallback note —
+  previously visible only inside the collapsed checks foldout. Log-free lookup
+  (`BuildConfigCatalog.Find`'s duplicate complaint is a LogError and this renders every
+  repaint); `ConfigPresenceCheck` keeps owning the messaging.
+- Result header polish: `TestPassed`/`TestFailed` icon and the run's start stamp next to
+  the existing duration (legacy results without `StartedUtc` omit it).
+
+### Changed
+- **Version-row gating** (panel-only behavior change): the bump toggles are now enabled by
+  the stage that gives them meaning — `Bump Build Code` needs Build Player (a code no
+  binary carries would be burned otherwise), `Bump Addressables Version` needs Build
+  Addressables (exactly the state `BumpConsistencyCheck` warns about; the check stays for
+  the CLI). A gated-off toggle is also FORCED false before preflight, so a greyed row can
+  never smuggle a hidden true into `Start()` — the same force-false rule the
+  Addressables-absent branch already applied. `VersionName` deliberately stays always
+  editable: `ApplyVersionStage` runs unconditionally in every job (measured — content-only
+  jobs stamp the version too).
+- The artifact-name preview moved from the Output box to right above the Build button
+  (player builds only — a content-only job has no player artifact to preview).
+- The Label tooltip no longer carries a host-specific example.
+
+### Internal
+- New `PanelDecisions` (Editor/UI): the panel's pure/testable surface — gating, icon set,
+  `FormatStartedLocal`, `AccentFor`. Suite 296 -> 303 (red-first; all three cores
+  mutation-probed kill-then-red: 4 mutations -> exactly the 4 pinning tests failed).
+
 ## [0.12.4] - 2026-08-18
 
 ### Docs

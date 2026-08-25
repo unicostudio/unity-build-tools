@@ -3,7 +3,7 @@
 UPM monorepo. Repo root is a REAL Unity 6000.0.62f1 dev project (open it to compile/test the
 packages in place). Two packages under `Packages/`:
 
-- `com.unicostudio.buildsystem` (current: 0.12.4) — panel + headless build pipeline, full
+- `com.unicostudio.buildsystem` (current: 0.13.0) — panel + headless build pipeline, full
   EditMode suite under `Tests/Editor/`.
 - `com.unicostudio.versiontracker` (current: 1.7.3) — build-info export; EditMode suite (21)
   since 1.7.0, wired into the CI gate.
@@ -31,7 +31,7 @@ On any problem: STOP and consult — do not improvise around a failure.
 ## Release ritual (per package)
 
 `package.json` version bump + `CHANGELOG.md` entry + commit + tag `<package-id>/<version>`
-(e.g. `com.unicostudio.buildsystem/0.12.4`) + push main and the tag. Then per host:
+(e.g. `com.unicostudio.buildsystem/0.13.0`) + push main and the tag. Then per host:
 edit the manifest pin, run headless `-runTests -testPlatform EditMode`, verify lock hash ==
 tag commit, commit manifest+lock together.
 
@@ -40,10 +40,10 @@ tag commit, commit manifest+lock together.
 - Headless runs need the target project's Unity editor CLOSED (check `pgrep -f MacOS/Unity`).
 - `-batchmode -nographics -quit` for compile checks; `-runTests -testPlatform EditMode
   -testResults <xml>` for suites (never combine `-runTests` with `-quit`).
-- Suite baselines (2026-08-18, post pin-bump to 0.12.4/1.7.3): this repo 318/0 (buildsystem 296
-  + versiontracker 21 + 1 Unity Addressables doc stub); BTA 412/0 (host 116 + buildsystem 296 —
-  host grew +52 when PR #7 added MainLevelOrderEditModeTests); BT5 614/0 (host 318 +
-  buildsystem 296). A count drift is a finding, not noise — name it.
+- Suite baselines (2026-08-25, post 0.13.0 in-repo; hosts still on 0.12.4/1.7.3 until their pin bump): this repo 325/0 (buildsystem 303
+  + versiontracker 21 + 1 Unity Addressables doc stub); BTA 412/0 (host 116 + buildsystem 296 at 0.12.4 —
+  host grew +52 when PR #7 added MainLevelOrderEditModeTests); BT5 614/0 (host 318 + buildsystem
+  296 at 0.12.4; both hosts shift +7 when pinned to 0.13.0). A count drift is a finding, not noise — name it.
 
 ## Consumers (hosts)
 

@@ -7,8 +7,52 @@ using UnityEngine;
 
 namespace UnicoStudio.BuildSystem.Editor
 {
-    public sealed class BuildPanelWindow : EditorWindow
+    public sealed class BuildPanelWindow : EditorWindow, IHasCustomMenu
     {
+        // Per-user presentation preference (EditorPrefs, NOT project data): kind accent tints.
+        private const string AccentPrefKey = "UnicoBuild.Panel.AccentColors";
+        private static bool AccentsEnabled => EditorPrefs.GetBool(AccentPrefKey, true);
+
+        // Window-tab context menu (standard Unity pattern) — zero layout cost, discoverable.
+        public void AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Accent Colors"), AccentsEnabled, () =>
+            {
+                EditorPrefs.SetBool(AccentPrefKey, !AccentsEnabled);
+                Repaint();
+            });
+        }
+
+        // IconContent lookups cached per name (an uncached lookup allocates every frame); the
+        // name set itself lives in PanelDecisions and is pinned by PanelDecisionsEditModeTests.
+        private static readonly Dictionary<string, GUIContent> s_icons = new();
+        private static Texture IconTex(string name)
+        {
+            if (!s_icons.TryGetValue(name, out var content))
+            {
+                content = EditorGUIUtility.IconContent(name);
+                s_icons[name] = content;
+            }
+            return content.image;
+        }
+
+        // Boxed section with an icon header; accent tints the box background only (color is
+        // never the sole carrier — the header text and the kind popup stay authoritative).
+        private static void BeginSection(string title, string iconName, Color background)
+        {
+            var prev = GUI.backgroundColor;
+            GUI.backgroundColor = background;
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUI.backgroundColor = prev;
+            EditorGUILayout.LabelField(new GUIContent(" " + title, IconTex(iconName)), EditorStyles.boldLabel);
+        }
+
+        private static void EndSection()
+        {
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space();
+        }
+
         // Serialized so the form survives domain reloads (platform switch, define restore) and so
         // the Undo system can snapshot it. BuildRequest itself stays a plain core model — undo is
         // purely a window concern and adds nothing a future CLI caller would ever see.
@@ -54,7 +98,7 @@ namespace UnicoStudio.BuildSystem.Editor
             public static readonly GUIContent OutputAab = new("Output AAB",
                 "Produce an .aab (Google Play upload; debug symbols are included for the AAB).");
             public static readonly GUIContent Label = new("Label (optional)",
-                $"Optional suffix in the artifact filename, kept to letters and digits.\ne.g. SocialLogin → {BuildArtifactNaming.ProductPrefix}_SocialLogin_v...");
+                "Optional suffix in the artifact filename, kept to letters and digits.");
             public static readonly GUIContent OutputFolder = new("Output Folder",
                 "Destination folder for the artifact.\nLeave empty to use Builds/{Platform}/{Kind}/.");
         }
@@ -154,7 +198,22 @@ namespace UnicoStudio.BuildSystem.Editor
             }
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.LabelField("Target", EditorStyles.boldLabel);
+            // Effective bump values FIRST, from last event's stage toggles: a greyed row must
+            // never smuggle a hidden true into Start() or into the preflight run below (same
+            // force-false rule as the Addressables-absent branch). One-frame convergence is
+            // standard IMGUI — the toggle click itself triggers the next repaint.
+            var gate = PanelDecisions.GateVersionRows(_req.BuildPlayer, _req.BuildAddressables,
+                _req.BumpBuildCode, _req.BumpAddressablesVersion);
+            _req.BumpBuildCode = gate.EffectiveBumpCode;
+            _req.BumpAddressablesVersion = gate.EffectiveBumpAddressables;
+
+            var accent = PanelDecisions.AccentFor(_req.Kind, AccentsEnabled);
+            // One discovery for the window's own consumers (the config row and ResolveProfile);
+            // checks that read configs still run their own LoadAll inside the preflight pass.
+            var allConfigs = BuildConfigCatalog.LoadAll();
+
+            BeginSection("Target", _req.Platform == BuildPlatform.Android
+                ? PanelDecisions.IconAndroid : PanelDecisions.IconIos, accent);
             var prevPlatform = _req.Platform;
             var prevKind = _req.Kind;
             _req.Platform = (BuildPlatform)EditorGUILayout.EnumPopup(Tips.Platform, _req.Platform);
@@ -164,22 +223,32 @@ namespace UnicoStudio.BuildSystem.Editor
             // like TEST_MODE verification on Play internal testing).
             if ((_req.Platform != prevPlatform || _req.Kind != prevKind) && _req.Platform == BuildPlatform.Android)
                 _req.Outputs = _req.Kind == BuildKind.Release ? OutputKind.Apk | OutputKind.Aab : OutputKind.Apk;
+            // Which config this build resolves, visible at a glance (previously only inside the
+            // collapsed checks foldout). NOT BuildConfigCatalog.Find: its duplicate complaint is
+            // a LogError, and this line renders every repaint — ConfigPresenceCheck owns the
+            // messaging, this row only mirrors the resolution.
+            var resolvedConfig = allConfigs.FirstOrDefault(c => c && c.Platform == _req.Platform && c.Kind == _req.Kind);
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.LabelField("Config", resolvedConfig ? resolvedConfig.name : "none — kind-based fallback (see checks)");
+            EndSection();
 
             // active/want feed needsSwitch below; the switch warning itself is rendered once by
             // PlatformMatchCheck in the pre-flight results (no duplicate inline HelpBox).
             var active = EditorUserBuildSettings.activeBuildTarget;
             var want = _req.Platform.ToBuildTarget();
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Version", EditorStyles.boldLabel);
+            BeginSection("Version", PanelDecisions.IconVersion, Color.white);
             var code = _req.Platform == BuildPlatform.Android
                 ? PlayerSettings.Android.bundleVersionCode
                 : int.TryParse(PlayerSettings.iOS.buildNumber, out var n) ? n : 0;
             if (string.IsNullOrEmpty(_req.VersionName)) _req.VersionName = PlayerSettings.bundleVersion;
+            // VersionName is deliberately NOT gated by the stage toggles: ApplyVersionStage runs
+            // unconditionally in every job (content-only builds stamp the version too).
             _req.VersionName = EditorGUILayout.TextField(Tips.VersionName, _req.VersionName);
 
-            VersionRow(Tips.BumpBuildCode, ref _req.BumpBuildCode,
-                _req.BumpBuildCode ? $"{code}  →  {code + 1}" : code.ToString());
+            using (new EditorGUI.DisabledScope(!gate.CodeRowEnabled))
+                VersionRow(Tips.BumpBuildCode, ref _req.BumpBuildCode,
+                    _req.BumpBuildCode ? $"{code}  →  {code + 1}" : code.ToString());
 
             if (UnicoBuildService.AddressablesAvailable)
             {
@@ -191,11 +260,12 @@ namespace UnicoStudio.BuildSystem.Editor
                     addrValue = _req.BumpAddressablesVersion ? $"{v}  →  {v + 1}" : v.ToString();
                 }
                 else addrValue = "unavailable (no version store)";
-                VersionRow(Tips.BumpAddressables, ref _req.BumpAddressablesVersion, addrValue);
+                using (new EditorGUI.DisabledScope(!gate.AddressablesRowEnabled))
+                    VersionRow(Tips.BumpAddressables, ref _req.BumpAddressablesVersion, addrValue);
             }
+            EndSection();
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Stages", EditorStyles.boldLabel);
+            BeginSection("Stages", PanelDecisions.IconStages, Color.white);
             if (UnicoBuildService.AddressablesAvailable)
             {
                 _req.BuildAddressables = EditorGUILayout.Toggle(Tips.BuildAddressables, _req.BuildAddressables);
@@ -232,9 +302,9 @@ namespace UnicoStudio.BuildSystem.Editor
                     _req.Outputs = OutputKind.XcodeProject;
                 }
             }
+            EndSection();
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Output", EditorStyles.boldLabel);
+            BeginSection("Output", PanelDecisions.IconOutput, Color.white);
             using (new EditorGUI.DisabledScope(!_req.BuildPlayer))
             {
                 _req.Label = EditorGUILayout.TextField(Tips.Label, _req.Label);
@@ -260,19 +330,13 @@ namespace UnicoStudio.BuildSystem.Editor
                         if (!string.IsNullOrEmpty(picked)) _req.OutputFolder = picked;
                     }
                 }
-                // Preview must show the code the artifact will actually get — ApplyVersionStage bumps before naming.
-                var previewCode = _req.BumpBuildCode ? code + 1 : code;
-                EditorGUILayout.LabelField("Preview", BuildArtifactNaming.FileName(
-                    BuildArtifactNaming.ProductPrefix, _req.Label, _req.VersionName, previewCode, DateTime.Now, _req.Kind,
-                    _req.Platform == BuildPlatform.iOS ? ""
-                        : (_req.Outputs & OutputKind.Aab) != 0 ? "aab" : "apk"));
             }
+            EndSection();
 
-            EditorGUILayout.Space();
             var results = PreflightRunner.Run(
                 new BuildContext(_req)
                 {
-                    Profile = BuildConfigCatalog.ResolveProfile(BuildConfigCatalog.LoadAll(), _req.Platform, _req.Kind),
+                    Profile = BuildConfigCatalog.ResolveProfile(allConfigs, _req.Platform, _req.Kind),
                 },
                 s_checks);
             // Passing checks collapse into one line (expandable for details) — screen space goes
@@ -305,6 +369,21 @@ namespace UnicoStudio.BuildSystem.Editor
             var needsSwitch = active != want;
             // Both stages off = nothing to run; StageSelectionCheck's Block box explains why.
             var nothingToDo = !_req.BuildAddressables && !_req.BuildPlayer;
+            // The artifact-name preview sits right above the button it describes — the last
+            // thing read before committing. Player builds only: a content-only job has no
+            // player artifact to preview. ApplyVersionStage bumps before naming, so the
+            // preview must show the post-bump code.
+            if (_req.BuildPlayer)
+            {
+                EditorGUILayout.Space();
+                var previewCode = _req.BumpBuildCode ? code + 1 : code;
+                EditorGUILayout.LabelField("Preview", BuildArtifactNaming.FileName(
+                    BuildArtifactNaming.ProductPrefix, _req.Label, _req.VersionName, previewCode, DateTime.Now, _req.Kind,
+                    _req.Platform == BuildPlatform.iOS ? ""
+                        : (_req.Outputs & OutputKind.Aab) != 0 ? "aab" : "apk"));
+            }
+            var prevBg = GUI.backgroundColor;
+            GUI.backgroundColor = accent;
             using (new EditorGUI.DisabledScope(isRunning || nothingToDo))
             {
                 if (GUILayout.Button(isRunning ? "Building..." : "Build", GUILayout.Height(44)))
@@ -319,6 +398,7 @@ namespace UnicoStudio.BuildSystem.Editor
                     }
                 }
             }
+            GUI.backgroundColor = prevBg;
 
             if (isRunning && GUILayout.Button("Reset stuck job")
                 && EditorUtility.DisplayDialog("Reset build job",
@@ -348,8 +428,12 @@ namespace UnicoStudio.BuildSystem.Editor
             {
                 EditorGUILayout.Space();
                 var duration = last.DurationSeconds > 0 ? $"  ({FormatDuration(last.DurationSeconds)})" : "";
-                EditorGUILayout.LabelField(
-                    (last.Success ? "Last build: OK" : "Last build: FAILED") + duration, EditorStyles.boldLabel);
+                var started = PanelDecisions.FormatStartedLocal(last.StartedUtc);
+                EditorGUILayout.LabelField(new GUIContent(
+                        (last.Success ? " Last build: OK" : " Last build: FAILED") + duration +
+                        (started.Length > 0 ? $"  —  {started}" : ""),
+                        IconTex(last.Success ? PanelDecisions.IconResultOk : PanelDecisions.IconResultFailed)),
+                    EditorStyles.boldLabel);
                 foreach (var s in last.Steps) EditorGUILayout.LabelField("• " + s);
                 if (last.Artifacts.Count > 0)
                 {
