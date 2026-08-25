@@ -73,9 +73,10 @@ owns that flag).
 Resolved since the 2026-08-07 audit: content-state lineage (bins committed to hosts, CI
 invariant 6 guards them; BT5 Android lineage KNOWN-LOST — never Update-Previous it), the iOS
 Test build debt (`#if TEST_MODE` compiles clean for iOS), Q1 (BuildPlayer pumps zero update
-ticks in batchmode; recorded in `Editor/Core/_Info.md`), the versiontracker suite, and the
+ticks in batchmode; recorded in `Editor/Core/_Info.md`), the versiontracker suite, the
 Unity-MCP define poisoning (0.11.0 DefineGuard + 0.12.0 StripPackages + 0.12.1
-DefineReassertWatcher; both hosts adopted, mains merged).
+DefineReassertWatcher; both hosts adopted, mains merged), and the strict-Release batchmode
+run (exercised green 2026-08-25 by the build-lane E2E, `ci/run-player-build.sh`).
 
 Open:
 1. Runner bring-up: self-hosted Mac registered with the `unity-mac` label + Unity Pro seat +
@@ -84,5 +85,3 @@ Open:
    doing the upload; needs the DevOps SFTP details.
 3. Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout) in `Editor/Core/_Info.md`
    still want live experiments — design CI gates to answer them.
-4. BT5 `feature/economy-rebalance-migration` is READY-TO-MERGE but unmerged (host-side,
-   user's call). A strict-Release batchmode run also remains unexercised.
