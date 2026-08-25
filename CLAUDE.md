@@ -83,5 +83,8 @@ Open:
    `CI_REPO_READ_TOKEN` secret; the first `workflow_dispatch` validates both lanes.
 2. CDN upload as a PostSuccess step — `CdnReminderCheck`'s strict-exemption is premised on CI
    doing the upload; needs the DevOps SFTP details.
-3. Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout) in `Editor/Core/_Info.md`
-   still want live experiments — design CI gates to answer them.
+3. ~~Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout)~~ — both MEASURED
+   2026-08-25 and recorded in `Editor/Core/_Info.md`: the watcher decides before the runner
+   drains (one-tick deadline boundary, accepted by design), and a throw escaping `Start` is
+   killed by Unity itself in ~10 s with exit 1 (no hang; the build-lane runner already fails
+   loudly on the missing result). No new CI gate needed beyond the existing outer watchdog.

@@ -59,9 +59,17 @@ Rules:
   interactively before relying on it there. If yes there, `Advance` has no re-entrancy guard
   and `OrphanedDevStateRecovery.Offer` does not re-check `BuildJobState.Active`; both would be
   serious.
-  (2) The `[InitializeOnLoad]` registration order of `CiCompletionWatcher` vs `PostSuccessRunner`:
-  between `Arm` and the first drain tick `HasPending` is true, and in that window a past-deadline
-  watcher tick's behaviour depends on an ordering the source does not determine.
+  (2) ~~The `[InitializeOnLoad]` registration order of `CiCompletionWatcher` vs `PostSuccessRunner`~~
+  **MEASURED 2026-08-25** (batchmode, Unity 6000.0.62f1, reflection over
+  `EditorApplication.update`'s invocation list, stable across two sessions):
+  `CiCompletionWatcher.OnUpdate` sits at index 0, `PostSuccessRunner.OnUpdate` at index 1 —
+  **the watcher decides BEFORE the runner drains within every tick**. Consequence: on the exact
+  tick the deadline passes, still-queued post-success runs are dropped by `TimeoutReset` rather
+  than drained (a successful job concludes as exit 2). This is a one-tick-wide boundary and is
+  ACCEPTED BY DESIGN: the deadline exists precisely to kill queues that cannot drain, and
+  `Decide`'s concluded-job-outranks-deadline rule still protects every case where the queue
+  emptied first. On ticks before the deadline the order only costs +1 tick of conclusion
+  latency (runner drains at index 1, watcher concludes next tick).
   (3) ~~Does the Editor asmdef's unconditional `Unity.Addressables*` reference list break
   compilation in a host WITHOUT Addressables installed?~~ **MEASURED 2026-08-07, C3 phase 1**:
   the unity-build-tools dev project opened WITHOUT Addressables — compile clean (exit 0, zero
@@ -75,9 +83,17 @@ Rules:
   (5) `ProjectDefinesHash` proves "the define string changed", not "a domain reload was queued" —
   a host hook that triggers a recompile any other way (asmdef edit, `ImportAsset`) would run the
   remaining stages on stale assemblies, invisibly. No such hook exists today.
-  (6) `CiCompletionWatcher.Decide`'s null-result test cannot distinguish "still running" from
-  "the job never started": anything escaping `Start` turns an instant failure into a full
-  `-timeoutMinutes` hang and exit 2. No concrete escaper found.
+  (6) ~~Anything escaping `Start` turns an instant failure into a full `-timeoutMinutes` hang
+  and exit 2.~~ **MEASURED 2026-08-25 — the hang does not exist** (batchmode, Unity
+  6000.0.62f1; probe: `throw` injected at the top of the CLI-facing `Start` overload in a
+  clone, run via `ci/run-player-build.sh` with a 2-minute deadline): Unity itself aborts
+  batchmode when the `-executeMethod` target throws ("Aborting batchmode due to failure") —
+  **exit 1 in ~10 s wall time**, no deadline wait, no watcher tick, no stale SessionState
+  record (it dies with the session). The real cost is only that NO result JSON is written —
+  the failure cause lives in the editor log; `ci/run-player-build.sh` fails loudly on the
+  missing result and names the log. Optional nicety (not a defect): wrapping the `Start`
+  call in `UnicoBuildCli.Build` with a try/catch that writes a failure result before
+  `Exit(1)` would make the cause machine-readable.
   (7) Neither `PostSuccessRunner` nor `CiCompletionWatcher` observes the private
   `s_reloadPending` sentinel (they poll `isCompiling`/`isUpdating` only), so post-success steps
   can run before the restore reload lands; the audit judged `PostSuccessRunner`'s own header
