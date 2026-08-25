@@ -22,6 +22,6 @@ namespace UnicoStudio.BuildSystem.Editor
         public CompressionKind Compression = CompressionKind.LZ4HC;   // project standard
 
         public string OutputFolder = "";       // empty => default Builds/{platform}/{kind}
-        public string Label = "";              // optional, e.g. "SocialLogin"
+        public string Label = "";              // optional filename suffix (letters/digits)
     }
 }

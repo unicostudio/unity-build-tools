@@ -26,7 +26,7 @@ All discovered path-independently under `Assets/`; convention is `Assets/Setting
   Fill `ExpectedBundleId` per config; `ExtraDefines`/`StripDefines`/`StripPackages` as needed
   (tooltips explain scope and restore semantics). You can build with zero configs — the
   preflight then WARNS that the kind-based fallback is running with no config protections;
-  a Pass names the config the build resolved.
+  a Pass names the config the build resolved, and the panel's Target box shows it directly.
 - **`BuildSystemSettings`** — `Assets > Create > Unico > Build > Build System Settings`.
   Optional for player-only projects. Required once you build Addressables content
   (`RemoteLoadRoot` lives here). Also where the test-mode define is renamed (default

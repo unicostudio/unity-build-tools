@@ -15,6 +15,13 @@ templates include). The monorepo README documents the per-package tag convention
 
 Entry point:
 - `UnicoStudio ▸ BuildPanel` opens `BuildPanelWindow` (Editor/UI). It assembles a `BuildRequest`, runs pre-flight checks for display, and on Build calls `UnicoBuildService.Start`.
+- Panel behavior worth knowing (0.13.0): the bump toggles are enabled by the stage that gives
+  them meaning — `Bump Build Code` needs Build Player, `Bump Addressables Version` needs Build
+  Addressables — and a gated-off toggle is forced false (a greyed row never smuggles a hidden
+  bump into the job). `Version Name` stays always editable: every job stamps it, content-only
+  builds included. The Target box shows which `BuildTargetConfig` the request resolved, and the
+  Test/Release accent tint can be turned off per user via the window-tab context menu
+  ("Accent Colors").
 
 Folder map:
 - `Runtime/` — runtime-assembly Addressables version store, path composition, the `AddressablesProfilePaths` binding surface the Addressables profile variables resolve against, and the project-level `BuildSystemSettings` (the only non-editor code here; consumed by both the game and the build stages).
