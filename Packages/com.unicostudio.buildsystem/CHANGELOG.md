@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.13.1] - 2026-09-30
+
+### Fixed
+- **An Addressables Report window left open by an earlier build no longer fails the next
+  content build** ("Addressables New Build failed: Object reference not set to an instance of
+  an object"). Measured on BT5 (Addressables 2.7.4; `BuildReportWindow` is identical in
+  2.7.6): the window survives the job's domain reloads re-enabled — `OnEnable` re-binds
+  `BuildLayoutGenerationTask.s_LayoutCompleteCallback` — but its UI Toolkit `CreateGUI` never
+  runs; `BuildScriptBase.DisplayBuildReport`, the LAST line of the data build, then focuses it
+  and its summary tab throws. `BuildData` turned that into a failed result although every
+  content file, the catalog and the content state were already written, and the player build
+  never started. Typical trigger: a Test build (opens the report) followed by a Release build.
+  - `AddressablesReportWindowGuard` runs once before either content path (New Build and
+    Update Previous both end in `DisplayBuildReport`): closes every report window and clears
+    the callback (nothing in Addressables ever clears it, not even closing the window) —
+    exactly the state of a session's first build, which opens a fresh window and succeeds.
+    The report still auto-opens after the build. Closing uses `Close()` with a
+    `DestroyImmediate` fallback: `Close()` itself throws for a host-less window (measured —
+    the new test caught it before it could ship).
+  - `ProjectConfigData.AutoOpenAddressablesReport` is deliberately NOT toggled: it persists to
+    the user's settings file (would need crash-safe restore) and would suppress the report.
+  - Both targets are internal to com.unity.addressables (reached by reflection); a renamed
+    target degrades to a logged warning, never a failed build, and the new
+    `ReflectionTargets_ExistOnThisAddressablesVersion` test turns that drift red in CI.
+  - Suite 305 -> 308. The interactive end-to-end (open window + panel Release build) cannot
+    run headless — `DisplayBuildReport` is a no-op in batchmode — so the host confirms it.
+
 ## [0.13.0] - 2026-08-25
 
 Panel UX release. No pipeline/CLI behavior change; one panel-only behavior change

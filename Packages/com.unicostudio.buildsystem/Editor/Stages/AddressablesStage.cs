@@ -75,6 +75,17 @@ namespace UnicoStudio.BuildSystem.Editor
             // 3) Clear build cache (All).
             AddressableAssetSettings.CleanPlayerContent(settings.ActivePlayerDataBuilder);
 
+            // 3b) A report window left open by an earlier build turns this build's final
+            // DisplayBuildReport into a NullReferenceException that fails an already-complete
+            // build (measured; see AddressablesReportWindowGuard). Both paths below end in
+            // BuildData → DisplayBuildReport, so this runs once, right before either.
+            var guard = AddressablesReportWindowGuard.Neutralize();
+            if (guard.WindowsClosed > 0)
+                ctx.AddStep($"Addressables: closed {guard.WindowsClosed} stale Report window(s) (reopens after the build)");
+            if (guard.Warning != null)
+                Debug.LogWarning("[Build] Addressables Report window guard inactive on this Addressables " +
+                                 $"version ({guard.Warning}); an open Report window may fail the content build.");
+
             // 4) Update Previous Build or New Build.
             if (ctx.Request.AddressablesMode == AddressablesMode.UpdatePrevious)
             {
