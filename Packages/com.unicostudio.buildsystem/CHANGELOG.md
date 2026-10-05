@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.14.0] - 2026-10-05
+
+### Added
+- **Xcode entitlements check after every iOS player build.** Every `CODE_SIGN_ENTITLEMENTS`
+  value in the exported Xcode project must resolve to an existing file the way Xcode resolves
+  it (relative to the folder that holds the `.xcodeproj`); otherwise the build fails in Unity
+  with a message naming the value, where Xcode will look for it, and the likely cause.
+  - Why: measured twice on real exports (BT5 1.2.8 on 2026-09-15, BTAS 1.6.8 on 2026-10-05).
+    Unity's build graph stores the value relative to the Unity project; a capability
+    post-processor that reads it back and hands it to `ProjectCapabilityManager` gets it
+    resolved against the Xcode folder, logs a `DirectoryNotFoundException`, silently skips its
+    capability, and the export keeps the Unity-relative value. The Unity build reported success
+    both times and Xcode Archive failed with "could not be opened". The fix for that class of
+    defect belongs in the host post-processor (pass only the file name); BT5 had it, BTAS
+    did not, because it carried a copy of the file made before the fix. This check makes the
+    next occurrence in any host fail in Unity instead of at Archive.
+  - Read-only by design: the value is not rewritten. A broken value means a writer failed, and
+    repairing only the path would ship an export missing that writer's capability.
+  - `$(SRCROOT)`-prefixed and absolute values are resolved; values built from other build
+    settings cannot be resolved without Xcode and are skipped rather than failed. A passing
+    export with entitlements adds an `Xcode entitlements check OK` step.
+  - Parses the pbxproj text directly — no `UnityEditor.iOS.Xcode` dependency, so hosts
+    without iOS Build Support still compile the package.
+  - Minor bump: an iOS build that used to finish "OK" with an unarchivable Xcode project now
+    fails. Suite 308 -> 317.
+
 ## [0.13.1] - 2026-09-30
 
 ### Fixed

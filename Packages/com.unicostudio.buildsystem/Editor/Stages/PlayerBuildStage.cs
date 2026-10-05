@@ -110,6 +110,25 @@ namespace UnicoStudio.BuildSystem.Editor
                         (ok ? $"-> {outPath}" : $"FAILED ({report.summary.result})"));
             if (!ok) throw new BuildFailedException($"Player build failed: {report.summary.result}");
 
+            // BuildPlayer returns after every IPostprocessBuildWithReport ran, so the export is final
+            // here. An entitlements value Xcode cannot resolve means a capability post-processor
+            // failed (see XcodeEntitlementsCheck) — fail now, not at Xcode Archive.
+            if (target == BuildTarget.iOS)
+            {
+                var problem = XcodeEntitlementsCheck.Run(outPath, out var hasEntitlements);
+                if (problem != null)
+                {
+                    ctx.AddStep($"Xcode entitlements check FAILED: {problem}");
+                    throw new BuildFailedException(
+                        "[Build] Xcode project's CODE_SIGN_ENTITLEMENTS does not point at an existing file: " +
+                        problem + ". Xcode Archive would fail. A post-build step most likely passed the " +
+                        "Unity-project-relative CODE_SIGN_ENTITLEMENTS value to ProjectCapabilityManager; it " +
+                        "must pass only the file name (Path.GetFileName). Check Editor.log for " +
+                        "DirectoryNotFoundException from ProjectCapabilityManager.WriteToFile.");
+                }
+                if (hasEntitlements) ctx.AddStep("Xcode entitlements check OK");
+            }
+
             ctx.AddArtifact(outPath, aab ? ArtifactKind.Aab
                 : target == BuildTarget.iOS ? ArtifactKind.XcodeProject : ArtifactKind.Apk);
             if (aab)
