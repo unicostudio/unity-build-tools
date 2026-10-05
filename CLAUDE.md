@@ -71,7 +71,9 @@ owns that flag).
 ## CI program backlog (updated 2026-08-18)
 
 Resolved since the 2026-08-07 audit: content-state lineage (bins committed to hosts, CI
-invariant 6 guards them; BT5 Android lineage KNOWN-LOST — never Update-Previous it), the iOS
+invariant 6 guards them; BT5 Android's pre-1.2.8(20) lineage is KNOWN-LOST — never
+Update-Previous on top of it; a new lineage started with the 1.2.8(20) New Build Release on
+2026-09-30, bin committed in BT5 `4bd40c147`), the iOS
 Test build debt (`#if TEST_MODE` compiles clean for iOS), Q1 (BuildPlayer pumps zero update
 ticks in batchmode; recorded in `Editor/Core/_Info.md`), the versiontracker suite, the
 Unity-MCP define poisoning (0.11.0 DefineGuard + 0.12.0 StripPackages + 0.12.1
