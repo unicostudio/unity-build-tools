@@ -9,8 +9,8 @@ the order and the defaults. Both packages also work standalone — skip what you
 Package Manager > "Add package from git URL", pinned to a tag:
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.14.0
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.3
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.15.0
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.8.0
 ```
 
 To run the packages' own EditMode tests in your project, add them to `"testables"` in
@@ -31,7 +31,8 @@ All discovered path-independently under `Assets/`; convention is `Assets/Setting
   Optional for player-only projects. Required once you build Addressables content
   (`RemoteLoadRoot` lives here). Also where the test-mode define is renamed (default
   `TEST_MODE` — the build adds it globally on Test and removes it on Release; gate your test
-  features behind `#if TEST_MODE`).
+  features behind `#if TEST_MODE`). `DevelopmentOnlyDefines` lists defines that must appear only
+  in development builds (Test builds are development builds by default; Release never is).
 - **`AddressablesVersionStore`** — `Assets > Create > Unico > Build > Addressables Version
   Store`. Only for Addressables projects; fresh assets start at v1.
 
@@ -63,7 +64,9 @@ Package Manager > Unico Build System > Samples. Keep exactly ONE copy of each im
 Install `com.unity.addressables` yourself (peer dependency — the Addressables stage enables
 itself when present). Then:
 
-- Profiles must be named exactly `Development`, `Test`, `Production`.
+- Profiles must be named exactly `Development`, `Test`, `Production`. Builds use `Test` and
+  `Production` (or whatever a `BuildTargetConfig` names); a development build does not switch
+  profiles, so `Development` is used only if a config selects it.
 - Set each profile's remote variables to these bindings (copy-paste; the host writes no code):
 
 ```

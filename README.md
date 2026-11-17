@@ -15,7 +15,7 @@ Packages live under `Packages/` as embedded packages:
 
 - **Install by git URL, pin to a tag.** `main` moves as packages evolve — always append
   `#<package-id>/<version>` for anything past local experimentation.
-- **Tags are per package:** `com.unicostudio.versiontracker/1.7.3`, `com.unicostudio.buildsystem/0.14.0`. A release = version bump in
+- **Tags are per package:** `com.unicostudio.versiontracker/1.8.0`, `com.unicostudio.buildsystem/0.15.0`. A release = version bump in
   the package's `package.json` + a CHANGELOG entry + the matching tag.
 - **Packages must stay independently consumable.** A package may not reference another package in
   this repo unless it declares the dependency in its own `package.json`.
@@ -34,7 +34,7 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 Pinned to a version (recommended):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.7.3
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.versiontracker#com.unicostudio.versiontracker/1.8.0
 ```
 
 > Migrating from the old repo? The package id, namespaces and layout are unchanged — replace the
@@ -50,11 +50,11 @@ https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostud
 Pinned to a version (recommended):
 
 ```
-https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.14.0
+https://github.com/unicostudio/unity-build-tools.git?path=Packages/com.unicostudio.buildsystem#com.unicostudio.buildsystem/0.15.0
 ```
 
 > Consumers should also add `"testables": ["com.unicostudio.buildsystem"]` to their manifest —
-> a git-URL package's EditMode tests run only when listed there (317 in buildsystem; versiontracker ships its own 21 under the same rule).
+> a git-URL package's EditMode tests run only when listed there (344 in buildsystem; versiontracker ships its own 25 under the same rule).
 
 ## Working in this repo
 
