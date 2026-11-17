@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.8.0] - 2026-11-17
+
+* **NEW**: `projectInfo.developmentBuild` records whether the build was a development build,
+  read from the build's own `BuildSummary.options` (`BuildOptions.Development`) like
+  `compressionMethod`. Always written (`false` included), so a committed release file states
+  "not a development build" explicitly. Files written by earlier versions read back as `false`.
+  Suite 21 -> 25.
+* `package.json` now declares `"unity": "6000.0"`, the version the package is developed and
+  tested on (matches buildsystem).
+
 ## [1.7.3] - 2026-08-18
 
 * **DOCS** (no code changes): README correction — the 1.7.2 install note claimed the repo is
