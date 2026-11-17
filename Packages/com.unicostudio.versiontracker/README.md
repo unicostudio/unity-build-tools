@@ -32,7 +32,7 @@
 After every build, the tool automatically collects:
 
 - Third-party SDK versions
-- Build settings, such as platform and compression method
+- Build settings, such as platform, compression method and whether it was a development build (`developmentBuild`)
 
 The information is saved in a `.json` file located at: Assets/../UnicoVersionTracker/
 

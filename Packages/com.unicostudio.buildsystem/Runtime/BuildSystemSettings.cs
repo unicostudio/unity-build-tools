@@ -29,6 +29,18 @@ namespace UnicoStudio.BuildSystem
         // kind rule — the rail keeping test features out of Release must survive misconfiguration.
         public string EffectiveTestModeDefine => IsValidDefine(testModeDefine) ? testModeDefine.Trim() : DEFAULT_TEST_MODE_DEFINE;
 
+        [Tooltip("Scripting defines that belong ONLY in development builds (e.g. an SDK's verbose test " +
+                 "logging). A development build adds them to the player; every other build removes " +
+                 "them from the platform defines for the build's duration and refuses to compile a " +
+                 "player that still carries them. Entries naming the test-mode define are rejected.")]
+        [SerializeField] private string[] developmentOnlyDefines = new string[0];
+
+        public string[] DevelopmentOnlyDefines
+        {
+            get => developmentOnlyDefines ?? new string[0];
+            set => developmentOnlyDefines = value;
+        }
+
         // Valid C# preprocessor symbol; anything else would corrupt a ';'-joined defines string.
         public static bool IsValidDefine(string token) => !string.IsNullOrEmpty(token) && Regex.IsMatch(token.Trim(), "^[A-Za-z_][A-Za-z0-9_]*$");
 
@@ -86,6 +98,14 @@ namespace UnicoStudio.BuildSystem
         {
             var settings = LoadOrNull();
             return settings ? settings.EffectiveTestModeDefine : DEFAULT_TEST_MODE_DEFINE;
+        }
+
+        // The project's development-only defines, raw (BuildDefineResolver validates and sanitizes
+        // them); empty when no asset exists.
+        public static string[] ResolveDevelopmentOnlyDefines()
+        {
+            var settings = LoadOrNull();
+            return settings ? settings.DevelopmentOnlyDefines : new string[0];
         }
 
         // Symmetric with UnicoBuildPaths.RequireVersion: fails loud. The Addressables profile

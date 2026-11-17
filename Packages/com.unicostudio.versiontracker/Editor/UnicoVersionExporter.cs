@@ -1117,6 +1117,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
             public string PackageName { get; }
             public string Version { get; }
             public string CompressionMethod { get; }
+            public bool DevelopmentBuild { get; }
             public List<string> GraphicsAPIs { get; }
             public string ManagedStrippingLevel { get; }
             public string RenderPipeline { get; }
@@ -1136,7 +1137,8 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
                 string renderPipeline,
                 AndroidInfo android,
                 IOSInfo ios,
-                MediationTypes mediationTypes)
+                MediationTypes mediationTypes,
+                bool developmentBuild = false)
             {
                 GameId = gameId;
                 Platform = platform;
@@ -1144,6 +1146,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
                 PackageName = packageName;
                 Version = version;
                 CompressionMethod = compressionMethod;
+                DevelopmentBuild = developmentBuild;
                 GraphicsAPIs = graphicsAPIs;
                 ManagedStrippingLevel = managedStrippingLevel;
                 RenderPipeline = renderPipeline;
@@ -1160,6 +1163,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker
                 PackageName = Application.identifier;
                 Version = PlayerSettings.bundleVersion;
                 CompressionMethod = GetCompressionMethod(buildSummary.options);
+                DevelopmentBuild = buildSummary.options.HasFlag(BuildOptions.Development);
                 GraphicsAPIs = GetGraphicsAPI(buildSummary.platform);
                 ManagedStrippingLevel = GetManagedStrippingLevel(buildSummary.platformGroup);
                 RenderPipeline = GetRenderPipeline();

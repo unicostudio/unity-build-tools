@@ -40,7 +40,7 @@ Folder map:
   both packages, or metadata freshness-verification silently never runs).
 
 End-to-end flow:
-1. The panel builds a `BuildRequest` (platform, kind, version, bump toggles, addressables mode, outputs, compression, label, output folder).
+1. The panel builds a `BuildRequest` (platform, kind, version, bump toggles, addressables mode, outputs, compression, development, label, output folder).
 2. `UnicoBuildService.Start` resolves the Addressables `Profile` FIRST — `BuildConfigCatalog.ResolveProfile`: a matching `BuildTargetConfig`, else `Test`/`Production` by kind — and only then runs pre-flight; a `Block` result aborts. It captures a `DevStateSnapshot`, persists a `BuildJobState`, marks the session, and calls `Advance`. The order is load-bearing: a check that consults `BuildContext.Profile` sees whatever the context carries, so resolving afterwards left every such check validating the field's initialiser (`Test`) even for a Release build.
 3. `Advance` switches the active platform if needed (reimport + domain reload), then runs the stages from the saved `StepIndex`. Progress is persisted after each stage.
 4. A stage that changes global scripting defines triggers a domain reload; `BuildJobResumer` re-enters `Advance` at the next step.
@@ -128,6 +128,8 @@ CI usage:
 - NEVER pass `-quit`: the reload chain needs the editor alive across the job's domain reloads;
   `CiCompletionWatcher` (batchmode-only) is what exits the process once the job (and any
   PostSuccess queue) concludes or the timeout deadline is reached.
+- `-development true|false` is optional. Without it Test builds are development builds and Release
+  builds are not; `-development true -kind Release` is a parse error (exit 2).
 - Custom flag names avoid Unity's own argument namespace — notably Unity consumes `-version` itself (prints the editor version and exits), which is why the app version flag is `-versionName`.
 - Exit codes:
 
@@ -151,6 +153,7 @@ CI usage:
   | `VersionName` / `BuildCode` | string | On success: the produced build's values (post-bump). On failure they are read AFTER the rollback, so they carry the developer's original (pre-build) versions — only trust them when `Success` is true. `BuildCode` is Android version code / iOS build number as text |
   | `AddressablesVersion` | int | Content version; `-1` = store missing or Addressables unused |
   | `StartedUtc` / `EndedUtc` | string | ISO 8601 round-trip (`"o"`); empty = legacy result |
+  | `DevelopmentBuild` | bool | A player was built with `BuildOptions.Development` (verified against the build report); `false` for content-only jobs and legacy results. Like the version fields, only trust it when `Success` is true |
 - Keystore secrets are read from the environment, never from committed sources:
   `UNICO_KEYSTORE_PASS` / `UNICO_KEYALIAS_PASS`. Unset, this is a no-op and `KeystoreCheck` still
   blocks an unsigned Android Release cleanly.
@@ -186,6 +189,35 @@ Addressables is optional (peer dependency):
   `AddressablesStage` refuses to build, rather than baking an unresolved binding into the catalog.
 - Hosts without it get a player-only pipeline: the panel shows no Addressables rows,
   `AddressablesAvailabilityCheck` blocks API requests for the stage, and the stub stage throws.
+
+Development builds (0.15.0):
+- `BuildRequest.Development` builds the player with `BuildOptions.Development` (`Debug.isDebugBuild`,
+  the on-screen development overlay). Test builds default to it in the panel (Development Build
+  row) and the CLI (`-development`); Release builds can never carry it — the panel forces the row
+  off, the CLI rejects `-development true`, `DevelopmentBuildCheck` Blocks a programmatic request,
+  and `PlayerBuildStage` refuses again right before `BuildPlayer`.
+- Only `BuildOptions.Development` is added: profiler autoconnect and script debugging stay off.
+  The global `EditorUserBuildSettings.development` is neither read nor changed.
+- After `BuildPlayer` the build report's own options are compared with the request; a mismatch
+  fails the build. The step log records `Development Build: ON` / `OFF`, the result JSON carries
+  `DevelopmentBuild`, and an iOS development build adds a step to upload the archive with
+  Xcode Organizer > Distribute App > **TestFlight Internal Only** (scripted uploads:
+  `testFlightInternalTestingOnly = true` in `ExportOptions.plist`). Such a build can never be
+  submitted to the App Store, so a development build cannot be released by mistake. The package
+  exports the Xcode project; Archive and upload stay manual.
+- An iOS development build asks at launch to find devices on the local network. That is Unity's
+  development player connection (the build's `boot.config` switches it to listen mode; a
+  non-development build has no such entry and never asks). It is expected; testers can answer
+  "Don't Allow".
+- `BuildSystemSettings.DevelopmentOnlyDefines` lists defines that belong only in development
+  builds (e.g. an SDK's verbose test logging that its guide says to enable with Development
+  ticked). A development build adds them to the player (`extraScriptingDefines`, no reload);
+  every other build — every Release, and a Test build with Development off — removes them from
+  the platform's global defines for the build's duration and `DefineGuard` refuses to compile a
+  player that still carries them. Config `ExtraDefines`/`StripDefines` entries naming one are
+  ignored (`DefinePlanCheck` warns); listing the test-mode define here is a Block.
+- The Addressables profile is unaffected: a development Test build loads the same Test content as
+  any other Test build.
 
 Renaming the test-mode define in a host game:
 1. Create the optional settings asset: `Assets > Create > Unico > Build > Build System Settings` (convention: `Assets/Settings/Build/`).

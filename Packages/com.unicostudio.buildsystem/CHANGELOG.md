@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.15.0] - 2026-11-17
+
+### Added
+- **Development Build option.** `BuildRequest.Development` builds the player with
+  `BuildOptions.Development`. The panel shows a Development Build row (on by default for Test,
+  disabled and forced off for Release); the CLI takes `-development true|false` (default follows
+  the kind; `true` with Release is a parse error); `ci/run-player-build.sh` passes
+  `--development` through and asserts the result.
+  - Release can never be a development build: the panel forces the row off, the CLI rejects it,
+    the new `DevelopmentBuildCheck` Blocks a programmatic request, and `PlayerBuildStage`
+    refuses again right before `BuildPlayer`.
+  - Only `BuildOptions.Development` is added. Profiler autoconnect and script debugging stay
+    off; `EditorUserBuildSettings.development` is neither read nor written.
+  - Verified against the build itself: after `BuildPlayer` the report's `summary.options` must
+    agree with the request or the build fails. Measured on real builds in this repo (iOS Test
+    exports with Development on and off, an Android Test APK through the CLI default): the
+    report carries the flag correctly in both directions.
+  - Visible everywhere: `DevelopmentBuildCheck` states ON/OFF in preflight, the step log
+    records `Development Build: ON`/`OFF`, and the result JSON gains `DevelopmentBuild`
+    (true only when a player was built). An iOS development build adds a step to upload the
+    archive with Distribute App > TestFlight Internal Only (`testFlightInternalTestingOnly =
+    true` for scripted uploads), which can never be submitted to the App Store; Archive and
+    upload stay manual.
+  - Local network, measured on two iOS exports (Development on vs off): `Info.plist` is
+    identical and carries neither `NSLocalNetworkUsageDescription` nor `NSBonjourServices`. The
+    only player-side difference is `Data/boot.config`: the development build gains
+    `player-connection-mode=Listen` plus the build machine's LAN address (Unity's player
+    connection, used to attach the profiler). On devices that listening player makes iOS ask to
+    find devices on the local network at launch. Accepted as expected development-build
+    behaviour and left in place: the preflight line and the iOS step say so, and "Don't Allow"
+    is fine. Release builds never carry it.
+  - The Addressables profile is unaffected: a development Test build loads the same Test
+    content as any other Test build.
+- **`BuildSystemSettings.DevelopmentOnlyDefines`.** Defines listed here are added to the player
+  in development builds (`extraScriptingDefines`, no reload) and removed from the platform's
+  global defines in every other build, with `DefineGuard` refusing a player that still carries
+  them. Config `ExtraDefines`/`StripDefines` entries naming one are ignored with a Warn; an
+  invalid token or the test-mode define in the list is a Block. Generic by design: hosts put
+  their SDK's test-logging define here.
+- Minor bump: Test builds from the panel and the CLI are now development builds unless turned
+  off. Suite 317 -> 344.
+
 ## [0.14.0] - 2026-10-05
 
 ### Added

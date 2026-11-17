@@ -36,6 +36,7 @@ BUMP_BUILD_CODE=0
 BUMP_ADDRESSABLES=0
 BUILD_PLAYER="true"
 BUILD_ADDRESSABLES="false"
+DEVELOPMENT=""
 ADDRESSABLES_MODE=""
 OUTPUTS=""
 LABEL=""
@@ -58,6 +59,8 @@ Usage: run-player-build.sh --project <path> --platform <Android|iOS> --kind <Tes
   --build-player <bool>       Build the player (default: true)
   --build-addressables <bool> Build Addressables content (default: false)
   --addressables-mode <m>     UpdatePrevious | NewBuild (only with --build-addressables true)
+  --development <bool>        Development player (default: the CLI's — true for Test, false for Release;
+                              true with Release is rejected); asserted against the result's DevelopmentBuild
   --outputs <list>            Comma list of Apk,Aab,XcodeProject (required when building the player)
   --label <s>                 Artifact label
   --output-folder <path>      Build output folder (default: the pipeline's Builds/<Platform>/<Kind>/)
@@ -86,6 +89,7 @@ while [[ $# -gt 0 ]]; do
     --build-player) need_value "$@"; BUILD_PLAYER="$2"; shift 2 ;;
     --build-addressables) need_value "$@"; BUILD_ADDRESSABLES="$2"; shift 2 ;;
     --addressables-mode) need_value "$@"; ADDRESSABLES_MODE="$2"; shift 2 ;;
+    --development) need_value "$@"; DEVELOPMENT="$2"; shift 2 ;;
     --outputs) need_value "$@"; OUTPUTS="$2"; shift 2 ;;
     --label) need_value "$@"; LABEL="$2"; shift 2 ;;
     --output-folder) need_value "$@"; OUTPUT_FOLDER="$2"; shift 2 ;;
@@ -112,6 +116,8 @@ esac
 [[ -z "$BUILD_CODE" ]] || { is_uint "$BUILD_CODE" && [[ "$BUILD_CODE" -gt 0 ]]; } || fail "--build-code must be a positive integer, got: $BUILD_CODE"
 is_bool "$BUILD_PLAYER" || fail "--build-player expects true|false, got: $BUILD_PLAYER"
 is_bool "$BUILD_ADDRESSABLES" || fail "--build-addressables expects true|false, got: $BUILD_ADDRESSABLES"
+[[ -z "$DEVELOPMENT" ]] || is_bool "$DEVELOPMENT" || fail "--development expects true|false, got: $DEVELOPMENT"
+[[ "$DEVELOPMENT" != "true" || "$KIND" != "Release" ]] || fail "--development true is not allowed with --kind Release"
 [[ "$BUILD_PLAYER" == "false" || -n "$OUTPUTS" ]] || fail "--outputs is required when building the player (OutputSelectionCheck blocks OutputKind.None)"
 is_uint "$TIMEOUT_MINUTES" && [[ "$TIMEOUT_MINUTES" -gt 0 ]] || fail "--timeout-minutes must be a positive integer, got: $TIMEOUT_MINUTES"
 PROJECT="$(cd "$PROJECT" && pwd)" || fail "project path does not exist: $PROJECT"
@@ -149,6 +155,7 @@ CLI_ARGS=(
   -resultFile "$RESULT_FILE" -timeoutMinutes "$TIMEOUT_MINUTES"
 )
 [[ -z "$OUTPUTS" ]] || CLI_ARGS+=(-outputs "$OUTPUTS")
+[[ -z "$DEVELOPMENT" ]] || CLI_ARGS+=(-development "$DEVELOPMENT")
 [[ -z "$BUILD_CODE" ]] || CLI_ARGS+=(-buildCode "$BUILD_CODE")
 [[ "$BUMP_BUILD_CODE" -eq 0 ]] || CLI_ARGS+=(-bumpBuildCode)
 [[ "$BUMP_ADDRESSABLES" -eq 0 ]] || CLI_ARGS+=(-bumpAddressables)
@@ -159,7 +166,7 @@ CLI_ARGS=(
 
 echo "== Player build: $PROJECT"
 echo "   unity:    $UNITY_BIN"
-echo "   request:  $PLATFORM/$KIND v$VERSION_NAME player=$BUILD_PLAYER addressables=$BUILD_ADDRESSABLES outputs=${OUTPUTS:-none} strict=$STRICT"
+echo "   request:  $PLATFORM/$KIND v$VERSION_NAME player=$BUILD_PLAYER addressables=$BUILD_ADDRESSABLES outputs=${OUTPUTS:-none} development=${DEVELOPMENT:-default} strict=$STRICT"
 echo "   result:   $RESULT_FILE"
 echo "   timeout:  ${TIMEOUT_MINUTES}m (+10m outer watchdog)"
 
@@ -203,12 +210,13 @@ echo "   unity exit code: $UNITY_EXIT"
 # the exit code, and that every recorded artifact is really on disk.
 [[ -f "$RESULT_FILE" ]] || fail "no result JSON was produced (unity exit $UNITY_EXIT, log: $LOG_FILE)"
 
-python3 - "$RESULT_FILE" "$UNITY_EXIT" "$PROJECT" <<'PYEOF'
+python3 - "$RESULT_FILE" "$UNITY_EXIT" "$PROJECT" "$KIND" "$BUILD_PLAYER" "$DEVELOPMENT" <<'PYEOF'
 import json
 import os
 import sys
 
 result_path, unity_exit, project = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+kind, build_player, development = sys.argv[4], sys.argv[5] == "true", sys.argv[6]
 try:
     with open(result_path) as f:
         r = json.load(f)
@@ -219,7 +227,8 @@ success = bool(r.get("Success"))
 error = r.get("Error", "")
 print(f"   result: Success={success} DurationSeconds={r.get('DurationSeconds', 0):.0f} "
       f"VersionName={r.get('VersionName', '')!r} BuildCode={r.get('BuildCode', '')!r} "
-      f"AddressablesVersion={r.get('AddressablesVersion', -1)}")
+      f"AddressablesVersion={r.get('AddressablesVersion', -1)} "
+      f"DevelopmentBuild={r.get('DevelopmentBuild', False)}")
 for step in r.get("Steps", []):
     print(f"   step: {step}")
 for warning in r.get("Warnings", []):
@@ -245,6 +254,11 @@ elif not success:
     errors.append(f"build failed: {error or '(no Error recorded)'}")
 elif not artifacts and os.environ.get("UNICO_EXPECT_ARTIFACTS", "1") != "0":
     errors.append("build succeeded but recorded zero artifacts (set UNICO_EXPECT_ARTIFACTS=0 for content-only runs)")
+
+if success:
+    wanted = build_player and (development == "true" if development else kind == "Test")
+    if bool(r.get("DevelopmentBuild", False)) != wanted:
+        errors.append(f"DevelopmentBuild={r.get('DevelopmentBuild', False)} in the result, expected {wanted}")
 
 if errors:
     sys.exit("FAIL: " + "; ".join(errors))

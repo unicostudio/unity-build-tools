@@ -36,12 +36,14 @@ namespace UnicoStudio.BuildSystem.Editor
             var extra = cfg ? cfg.ExtraDefines : null;
             var strip = cfg ? cfg.StripDefines : null;
             var testDefine = BuildSystemSettings.ResolveTestModeDefine();
+            var devOnly = BuildSystemSettings.ResolveDevelopmentOnlyDefines();
 
             var current = PlayerSettings.GetScriptingDefineSymbols(platform.ToNamedBuildTarget())
                 .Split(';').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
 
-            return Evaluate(BuildDefineResolver.ValidateConfig(extra, strip, testDefine),
-                BuildDefineResolver.Resolve(ctx.Request.Kind, current, extra, strip, testDefine));
+            return Evaluate(BuildDefineResolver.ValidateConfig(extra, strip, testDefine, devOnly),
+                BuildDefineResolver.Resolve(ctx.Request.Kind, current, extra, strip, testDefine,
+                    ctx.Request.Development, devOnly));
         }
     }
 }

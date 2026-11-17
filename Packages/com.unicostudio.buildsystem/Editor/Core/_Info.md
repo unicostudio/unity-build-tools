@@ -15,7 +15,10 @@ Contents:
 - `UnicoBuildCli` — headless entry point (`Build`, invoked via `-executeMethod`, never `-quit`)
   that parses CI command-line flags into a `BuildRequest` and starts the job; CI defaults
   deliberately differ from the panel — nothing bumps unless explicitly flagged; also injects
-  keystore secrets from `UNICO_KEYSTORE_PASS` / `UNICO_KEYALIAS_PASS`.
+  keystore secrets from `UNICO_KEYSTORE_PASS` / `UNICO_KEYALIAS_PASS`. `-development true|false`
+  is optional: without it the request follows `BuildRequest.DefaultDevelopmentFor` for the FINAL
+  `-kind` (applied after the loop, so flag order cannot matter); `true` with Release is a parse
+  error (exit 2).
 - `CiCompletionWatcher` — concludes a CLI-started job: writes the machine-readable result file and
   exits the process with 0 (success), 1 (failure), or 2 (timeout). Armed only by `UnicoBuildCli`,
   every action additionally guarded by `Application.isBatchMode` so a stray SessionState record

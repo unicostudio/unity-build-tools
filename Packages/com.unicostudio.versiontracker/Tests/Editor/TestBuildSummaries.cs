@@ -13,7 +13,7 @@ namespace UnicoStudio.UnicoLibs.VersionTracker.Tests
     /// </summary>
     internal static class TestBuildSummaries
     {
-        public static BuildSummary ForAndroid()
+        public static BuildSummary ForAndroid(BuildOptions options = BuildOptions.None)
         {
             object boxed = default(BuildSummary);
             var fields = typeof(BuildSummary)
@@ -23,6 +23,8 @@ namespace UnicoStudio.UnicoLibs.VersionTracker.Tests
                 .SetValue(boxed, BuildTarget.Android);
             fields.Single(f => f.FieldType == typeof(BuildTargetGroup))
                 .SetValue(boxed, BuildTargetGroup.Android);
+            fields.Single(f => f.FieldType == typeof(BuildOptions))
+                .SetValue(boxed, options);
 
             return (BuildSummary)boxed;
         }

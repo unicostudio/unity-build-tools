@@ -486,6 +486,7 @@ namespace UnicoStudio.BuildSystem.Editor
                     StartedUtc = state.StartedTicksUtc > 0
                         ? new DateTime(state.StartedTicksUtc, DateTimeKind.Utc).ToString("o") : "",
                     EndedUtc = DateTime.UtcNow.ToString("o"),
+                    DevelopmentBuild = ResultDevelopmentBuild(ctx.Request),
                 };
 
                 BuildSession.End();
@@ -496,6 +497,11 @@ namespace UnicoStudio.BuildSystem.Editor
                 Debug.Log($"[Build] {(success ? "OK" : "FAIL " + error)}\n" + string.Join("\n", ctx.Steps));
             }
         }
+
+        // Pure core (unit-tested). A content-only job built no player, so it is not a development
+        // build whatever the request's flag says. PlayerBuildStage fails the job when the built
+        // player disagrees with the request, so a successful result can trust the request.
+        internal static bool ResultDevelopmentBuild(BuildRequest req) => req.BuildPlayer && req.Development;
 
         private static string ProjectDefinesHash(BuildRequest req) =>
             PlayerSettings.GetScriptingDefineSymbols(req.Platform.ToNamedBuildTarget());
