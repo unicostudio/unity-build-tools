@@ -23,7 +23,8 @@ namespace UnicoStudio.BuildSystem.Editor
             var cfg = BuildConfigCatalog.Find(BuildConfigCatalog.LoadAll(), platform, ctx.Request.Kind);
             var delta = BuildDefineResolver.Resolve(ctx.Request.Kind, current,
                 cfg ? cfg.ExtraDefines : null, cfg ? cfg.StripDefines : null,
-                BuildSystemSettings.ResolveTestModeDefine());
+                BuildSystemSettings.ResolveTestModeDefine(),
+                ctx.Request.Development, BuildSystemSettings.ResolveDevelopmentOnlyDefines());
 
             // Config ExtraDefines are deferred to the player build (no reload). MERGE, never
             // replace: a PreBuild hook may already have contributed defines here (the documented

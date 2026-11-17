@@ -52,6 +52,7 @@ namespace UnicoStudio.BuildSystem.Editor
             new PlatformMatchCheck(),
             new UnityServicesCheck(),
             new CompressionCheck(),
+            new DevelopmentBuildCheck(),
             new SplashLogoCheck(),
             new TestModeConsistencyCheck(),
             new DefinePlanCheck(),

@@ -56,7 +56,7 @@ namespace UnicoStudio.BuildSystem.Editor
         // Serialized so the form survives domain reloads (platform switch, define restore) and so
         // the Undo system can snapshot it. BuildRequest itself stays a plain core model — undo is
         // purely a window concern and adds nothing a future CLI caller would ever see.
-        [SerializeField] private BuildRequest _req = new();
+        [SerializeField] private BuildRequest _req = new() { Development = BuildRequest.DefaultDevelopmentFor(BuildKind.Test) };
         private Vector2 _scroll;
 
         // Deliberately NOT serialized: keeps foldout toggles out of the Undo stack (RecordObject
@@ -91,6 +91,8 @@ namespace UnicoStudio.BuildSystem.Editor
                 "Update Previous → incremental catalog update for already-shipped clients.\nNew Build → full rebuild; can break catalog continuity.");
             public static readonly GUIContent BuildPlayer = new("Build Player",
                 "Run the actual app build (APK / AAB / Xcode project).\nUntick to run only the version / define / Addressables steps — e.g. a content-only update.");
+            public static readonly GUIContent Development = new("Development Build",
+                "Build the player with BuildOptions.Development (Debug.isDebugBuild, the development overlay, development-only defines from BuildSystemSettings).\nOn by default for Test; never available for Release.\nProfiler autoconnect and script debugging stay off.\nDoes not change the Addressables profile.");
             public static readonly GUIContent Compression = new("Compression",
                 "Player-data compression for the app build (the Build Settings window's Compression Method does not apply to scripted builds).\nLZ4HC → project standard: smallest output, slower build.\nLZ4 → faster build, larger output.\nDefault → platform default.");
             public static readonly GUIContent OutputApk = new("Output APK",
@@ -223,6 +225,8 @@ namespace UnicoStudio.BuildSystem.Editor
             // like TEST_MODE verification on Play internal testing).
             if ((_req.Platform != prevPlatform || _req.Kind != prevKind) && _req.Platform == BuildPlatform.Android)
                 _req.Outputs = _req.Kind == BuildKind.Release ? OutputKind.Apk | OutputKind.Aab : OutputKind.Apk;
+            if (_req.Kind != prevKind)
+                _req.Development = BuildRequest.DefaultDevelopmentFor(_req.Kind);
             // Which config this build resolves, visible at a glance (previously only inside the
             // collapsed checks foldout). NOT BuildConfigCatalog.Find: its duplicate complaint is
             // a LogError, and this line renders every repaint — ConfigPresenceCheck owns the
@@ -283,10 +287,20 @@ namespace UnicoStudio.BuildSystem.Editor
                 _req.BuildAddressables = false;
                 _req.BumpAddressablesVersion = false;
             }
+            var prevBuildPlayer = _req.BuildPlayer;
             _req.BuildPlayer = EditorGUILayout.Toggle(Tips.BuildPlayer, _req.BuildPlayer);
+            // The gate below forces Development off while there is no player; turning the player
+            // back on restores the kind's default instead of leaving it off.
+            if (_req.BuildPlayer && !prevBuildPlayer)
+                _req.Development = BuildRequest.DefaultDevelopmentFor(_req.Kind);
             // Everything below only shapes the player artifact — grey it out when there is none.
             using (new EditorGUI.DisabledScope(!_req.BuildPlayer))
             {
+                var devGate = PanelDecisions.GateDevelopment(_req.Kind, _req.BuildPlayer, _req.Development);
+                using (new EditorGUI.DisabledScope(!devGate.Enabled))
+                    _req.Development = EditorGUILayout.Toggle(Tips.Development, devGate.Effective);
+                _req.Development = PanelDecisions.GateDevelopment(_req.Kind, _req.BuildPlayer, _req.Development).Effective;
+
                 _req.Compression = (CompressionKind)EditorGUILayout.EnumPopup(Tips.Compression, _req.Compression);
 
                 if (_req.Platform == BuildPlatform.Android)

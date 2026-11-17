@@ -91,6 +91,33 @@ namespace UnicoStudio.BuildSystem.Tests
         }
 
         [Test]
+        public void Development_DefaultsFollowTheKind()
+        {
+            Assert.IsTrue(Parse("-platform", "Android", "-kind", "Test").Request.Development);
+            Assert.IsFalse(Parse("-platform", "Android", "-kind", "Release").Request.Development);
+            // Flag order must not matter: -kind after the default is applied would leave Test's value.
+            Assert.IsFalse(Parse("-kind", "Release", "-platform", "iOS").Request.Development);
+        }
+
+        [Test]
+        public void Development_ExplicitValue_Wins_OnTest()
+        {
+            Assert.IsFalse(Parse("-platform", "Android", "-kind", "Test", "-development", "false").Request.Development);
+            Assert.IsTrue(Parse("-platform", "Android", "-kind", "Test", "-development", "true").Request.Development);
+        }
+
+        [Test]
+        public void Development_TrueOnRelease_IsAParseError()
+        {
+            var o = Parse("-platform", "Android", "-kind", "Release", "-development", "true");
+            StringAssert.Contains("-development true is not allowed with -kind Release", o.Error);
+
+            var ok = Parse("-platform", "Android", "-kind", "Release", "-development", "false");
+            Assert.AreEqual("", ok.Error);
+            Assert.IsFalse(ok.Request.Development);
+        }
+
+        [Test]
         public void BooleanValueFlags_Parse()
         {
             var o = Parse("-platform", "Android", "-kind", "Test",

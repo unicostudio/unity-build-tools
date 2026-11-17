@@ -289,6 +289,91 @@ namespace UnicoStudio.BuildSystem.Tests
             return Once();
         }
 
+        // --- development-only defines (BuildSystemSettings.DevelopmentOnlyDefines) ---
+
+        private const string DevLog = "SDK_TEST_LOG";
+        private static readonly string[] DevList = { DevLog };
+
+        private static DefineDelta ResolveDev(BuildKind kind, bool development, string[] global,
+            string[] extra = null, string[] strip = null) =>
+            BuildDefineResolver.Resolve(kind, global, extra, strip, TM, development, DevList);
+
+        [Test]
+        public void DevelopmentBuild_AddsDevOnlyDefine_PlayerOnly()
+        {
+            var d = ResolveDev(BuildKind.Test, true, WithTest);
+            CollectionAssert.AreEqual(new[] { DevLog }, d.AddViaExtra);
+            Assert.IsEmpty(d.AddToGlobal, "player-only: no global write, no reload");
+            CollectionAssert.DoesNotContain(d.ForbidInPlayer, DevLog);
+        }
+
+        [Test]
+        public void DevelopmentBuild_DevOnlyDefineAlreadyGlobal_NoChange()
+        {
+            var d = ResolveDev(BuildKind.Test, true, new[] { "TEST_MODE", DevLog });
+            Assert.IsEmpty(d.AddViaExtra);
+            Assert.IsEmpty(d.RemoveFromGlobal);
+        }
+
+        [Test]
+        public void NonDevelopmentTest_ForbidsDevOnlyDefine_AndRemovesItFromGlobals()
+        {
+            var d = ResolveDev(BuildKind.Test, false, new[] { "TEST_MODE", DevLog });
+            CollectionAssert.Contains(d.ForbidInPlayer, DevLog);
+            CollectionAssert.AreEqual(new[] { DevLog }, d.RemoveFromGlobal);
+            CollectionAssert.DoesNotContain(d.AddViaExtra, DevLog);
+        }
+
+        [Test]
+        public void Release_ForbidsDevOnlyDefine_EvenWhenNotGlobal()
+        {
+            // ForbidInPlayer must not depend on the current globals: a hook's copy in the
+            // player-only list would otherwise be the one copy that ships.
+            var d = ResolveDev(BuildKind.Release, false, WithoutTest);
+            CollectionAssert.Contains(d.ForbidInPlayer, DevLog);
+            CollectionAssert.DoesNotContain(d.RemoveFromGlobal, DevLog);
+        }
+
+        [Test]
+        public void ConfigListsNamingADevOnlyDefine_AreIgnored_TheDevelopmentRuleWins()
+        {
+            var nonDev = ResolveDev(BuildKind.Test, false, WithTest, extra: new[] { DevLog });
+            CollectionAssert.DoesNotContain(nonDev.AddViaExtra, DevLog);
+            CollectionAssert.Contains(nonDev.ForbidInPlayer, DevLog);
+
+            var dev = ResolveDev(BuildKind.Test, true, WithTest, strip: new[] { DevLog });
+            CollectionAssert.Contains(dev.AddViaExtra, DevLog);
+            CollectionAssert.DoesNotContain(dev.ForbidInPlayer, DevLog);
+        }
+
+        [Test]
+        public void DevOnlyListNamingTheTestModeDefine_IsIgnored_TheKindRuleWins()
+        {
+            var d = BuildDefineResolver.Resolve(BuildKind.Test, WithTest, null, null, TM, false, new[] { TM });
+            CollectionAssert.DoesNotContain(d.ForbidInPlayer, TM);
+            Assert.IsEmpty(d.RemoveFromGlobal);
+        }
+
+        [Test]
+        public void ValidateConfig_DevOnlyList_ReportsInvalidTokenAndTestModeAsBlocking()
+        {
+            var issues = BuildDefineResolver.ValidateConfig(null, null, TM, new[] { "BAD-TOKEN", TM, DevLog });
+            Assert.AreEqual(2, issues.Count, string.Join(" | ", issues.Select(i => i.Message)));
+            Assert.IsTrue(issues.All(i => i.Blocking));
+            StringAssert.Contains("BAD-TOKEN", issues[0].Message);
+            StringAssert.Contains(TM, issues[1].Message);
+        }
+
+        [Test]
+        public void ValidateConfig_ConfigEntryNamingADevOnlyDefine_IsAdvisory()
+        {
+            var issues = BuildDefineResolver.ValidateConfig(new[] { DevLog }, null, TM, DevList);
+            Assert.AreEqual(1, issues.Count);
+            Assert.IsFalse(issues[0].Blocking);
+            StringAssert.Contains(DevLog, issues[0].Message);
+            StringAssert.Contains("ExtraDefines", issues[0].Message);
+        }
+
         // --- HasDefine ---
 
         [Test]

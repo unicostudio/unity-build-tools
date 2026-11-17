@@ -27,6 +27,7 @@ namespace UnicoStudio.BuildSystem.Editor
         public int AddressablesVersion = -1;          // -1 = store missing or addressables unused
         public string StartedUtc = "";                // ISO 8601 ("o"); "" = legacy result
         public string EndedUtc = "";
+        public bool DevelopmentBuild;                 // a player was built with BuildOptions.Development
 
         // DEFENSIVE ONLY on the targeted Unity. An earlier version of this comment claimed
         // JsonUtility skips field initializers and leaves a legacy payload's collections null and

@@ -10,6 +10,7 @@ namespace UnicoStudio.BuildSystem.Editor
     //     -executeMethod UnicoStudio.BuildSystem.Editor.UnicoBuildCli.Build \
     //     -platform Android -kind Release -versionName 1.6.7 -bumpBuildCode -outputs Aab \
     //     -resultFile Builds/result.json -strictWarnings -timeoutMinutes 60
+    // -development true|false: optional; Test defaults to true, Release to false and rejects true.
     // NEVER pass -quit: the reload chain needs the editor alive; the watcher exits the process.
     // CI defaults deliberately differ from the panel: nothing bumps unless explicitly flagged.
     // Flag names deliberately avoid Unity's own argument namespace (-version is consumed by Unity itself and short-circuits the launch).
@@ -85,6 +86,7 @@ namespace UnicoStudio.BuildSystem.Editor
             var errors = new List<string>();
             var platformSet = false;
             var kindSet = false;
+            bool? development = null;
 
             string Next(ref int i, string flag)
             {
@@ -178,6 +180,9 @@ namespace UnicoStudio.BuildSystem.Editor
                         }
                         break;
                     }
+                    case "-development":
+                        development = NextBool(ref i, "-development") ?? development;
+                        break;
                     case "-label":
                         o.Request.Label = Next(ref i, "-label") ?? o.Request.Label;
                         break;
@@ -202,6 +207,11 @@ namespace UnicoStudio.BuildSystem.Editor
 
             if (!platformSet) errors.Add("-platform is required");
             if (!kindSet) errors.Add("-kind is required");
+
+            // Applied after the loop so flag order cannot matter: the default follows the final kind.
+            if (development == true && o.Request.Kind == BuildKind.Release)
+                errors.Add("-development true is not allowed with -kind Release");
+            o.Request.Development = development ?? BuildRequest.DefaultDevelopmentFor(o.Request.Kind);
             if (errors.Count > 0) o.Error = "CLI parse failed: " + string.Join("; ", errors);
             return o;
         }

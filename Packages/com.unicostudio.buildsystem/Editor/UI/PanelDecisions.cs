@@ -23,6 +23,18 @@ namespace UnicoStudio.BuildSystem.Editor
         }
     }
 
+    internal readonly struct DevelopmentRowGating
+    {
+        public readonly bool Enabled;
+        public readonly bool Effective;
+
+        public DevelopmentRowGating(bool enabled, bool effective)
+        {
+            Enabled = enabled;
+            Effective = effective;
+        }
+    }
+
     // The panel's pure/testable surface. The window stays IMGUI plumbing; every decision a
     // test can pin lives here instead.
     internal static class PanelDecisions
@@ -64,6 +76,15 @@ namespace UnicoStudio.BuildSystem.Editor
                 addressablesRowEnabled: buildAddressables,
                 effectiveBumpCode: requestedBumpCode && buildPlayer,
                 effectiveBumpAddressables: requestedBumpAddressables && buildAddressables);
+        }
+
+        // Development Build row: only a Test player build can be a development build. The
+        // effective value is what reaches Start, so a greyed row never carries a hidden true —
+        // Release in particular is forced off here, before preflight even sees the request.
+        internal static DevelopmentRowGating GateDevelopment(BuildKind kind, bool buildPlayer, bool requested)
+        {
+            var enabled = kind == BuildKind.Test && buildPlayer;
+            return new DevelopmentRowGating(enabled, enabled && requested);
         }
 
         // Short local timestamp for the result header, dd.MM.yyyy to match the artifact

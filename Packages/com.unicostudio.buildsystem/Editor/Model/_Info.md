@@ -3,9 +3,9 @@
 Serializable request/state, the runtime context carrier, and shared enums / interfaces.
 
 Contents:
-- `BuildRequest` — the panel's build input (platform, kind, version name, bump toggles, addressables build flag + mode, player build flag, outputs, compression, label, output folder). Serialized into `BuildJobState`.
+- `BuildRequest` — the panel's build input (platform, kind, version name, bump toggles, addressables build flag + mode, player build flag, outputs, compression, development, label, output folder). Serialized into `BuildJobState`. `Development` defaults to `false` on the field itself, so a caller that never sets it (or a legacy payload) cannot get a development player; the panel and the CLI seed it from `DefaultDevelopmentFor(kind)` (Test → true, Release → false).
 - `BuildContext` — the per-run carrier passed to checks and stages. Wraps the immutable `Request`, plus the resolved `Profile` and the accumulating `Steps`, `Artifacts`, and `ExtraScriptingDefines`.
-- `BuildResult` — the outcome surfaced to the panel (success, error, steps, artifacts). Exposed as `UnicoBuildService.LatestResult`, backed by SessionState so it survives the end-of-build reload.
+- `BuildResult` — the outcome surfaced to the panel (success, error, steps, artifacts, `DevelopmentBuild`). Exposed as `UnicoBuildService.LatestResult`, backed by SessionState so it survives the end-of-build reload.
 - `BuildTypes` — shared enums (`BuildPlatform`, `BuildKind`, `AddressablesMode`, `CompressionKind { LZ4HC, LZ4, Default }`, `CheckSeverity`, `[Flags] OutputKind`), the `CheckResult` readonly struct, and the `IPreflightCheck` / `IBuildStage` interfaces.
 - `BuildPlatformExtensions` — the single source of the `BuildPlatform` → `BuildTarget` / `NamedBuildTarget` / `BuildTargetGroup` mappings; every stage, check, and UI goes through it.
 - `UnicoBuildStepAttribute` + `BuildStepAnchor` — the hook registration surface (see README "Host build hooks").

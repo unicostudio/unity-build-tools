@@ -86,6 +86,31 @@ namespace UnicoStudio.BuildSystem.Editor
                 _ => BuildOptions.None
             };
 
+        // The full option set for the request's player. Development adds BuildOptions.Development
+        // and nothing else: ConnectWithProfiler and AllowDebugging stay off, since both open a
+        // player connection a development build here is not meant to carry. Release + Development
+        // is refused here as well as at preflight — the last point before a player exists.
+        internal static BuildOptions PlayerOptionsFor(BuildRequest req)
+        {
+            if (req.Kind == BuildKind.Release && req.Development)
+                throw new BuildFailedException(
+                    "[Build] Release builds cannot be development builds; refusing to build the player.");
+            var options = OptionsFor(req.Compression);
+            if (req.Development) options |= BuildOptions.Development;
+            return options;
+        }
+
+        // Pure core (unit-tested): compares what BuildPlayer reports it built against what the
+        // request asked for. Null when they agree.
+        internal static string DevelopmentMismatch(BuildOptions reportedOptions, bool requested)
+        {
+            var built = (reportedOptions & BuildOptions.Development) != 0;
+            if (built == requested) return null;
+            return built
+                ? "the player was built as a development build although the request did not ask for one"
+                : "the request asked for a development build but the player was not built as one";
+        }
+
         private void RunBuild(BuildContext ctx, string[] scenes, BuildTarget target, string outPath, bool aab)
         {
             if (target == BuildTarget.Android)
@@ -100,7 +125,7 @@ namespace UnicoStudio.BuildSystem.Editor
                 scenes = scenes,
                 locationPathName = outPath,
                 target = target,
-                options = OptionsFor(ctx.Request.Compression),
+                options = PlayerOptionsFor(ctx.Request),
                 extraScriptingDefines = ctx.ExtraScriptingDefines.ToArray(),
             };
 
@@ -109,6 +134,16 @@ namespace UnicoStudio.BuildSystem.Editor
             ctx.AddStep($"{(aab ? "AAB (+symbols)" : target == BuildTarget.iOS ? "Xcode" : "APK")} " +
                         (ok ? $"-> {outPath}" : $"FAILED ({report.summary.result})"));
             if (!ok) throw new BuildFailedException($"Player build failed: {report.summary.result}");
+
+            var mismatch = DevelopmentMismatch(report.summary.options, ctx.Request.Development);
+            if (mismatch != null)
+            {
+                ctx.AddStep($"Development Build check FAILED: {mismatch}");
+                throw new BuildFailedException($"[Build] Development Build: {mismatch}.");
+            }
+            ctx.AddStep(ctx.Request.Development ? "Development Build: ON" : "Development Build: OFF");
+            if (ctx.Request.Development && target == BuildTarget.iOS)
+                ctx.AddStep("Development build: archive in Xcode and upload to TestFlight as Internal Only — never to external testers");
 
             // BuildPlayer returns after every IPostprocessBuildWithReport ran, so the export is final
             // here. An entitlements value Xcode cannot resolve means a capability post-processor

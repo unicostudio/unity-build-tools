@@ -76,12 +76,20 @@ namespace UnicoStudio.BuildSystem.Editor
         // The test-mode define obeys ONLY the kind rule: config entries naming it are dropped here
         // (ValidateConfig reports them), so a config can never fight the Test/Release invariant.
         // Invalid tokens are dropped defensively too — preflight blocks on them before any build.
+        //
+        // Development-only defines follow the same ownership idea under a second rule: a
+        // development build adds them player-only (AddViaExtra — nothing editor-side needs them);
+        // every other build removes them from the globals (when present) and forbids them in the
+        // player. Config entries naming one are dropped like test-mode entries, and the list never
+        // touches the test-mode define, so neither rule can fight the other.
         public static DefineDelta Resolve(BuildKind kind, IEnumerable<string> currentGlobalDefines,
-            IEnumerable<string> extraDefines, IEnumerable<string> stripDefines, string testModeDefine)
+            IEnumerable<string> extraDefines, IEnumerable<string> stripDefines, string testModeDefine,
+            bool development = false, IEnumerable<string> developmentOnlyDefines = null)
         {
             var global = new HashSet<string>(currentGlobalDefines ?? Enumerable.Empty<string>());
-            var extra = Sanitize(extraDefines, testModeDefine);
-            var strip = Sanitize(stripDefines, testModeDefine);
+            var devOnly = Sanitize(developmentOnlyDefines, testModeDefine);
+            var extra = Sanitize(extraDefines, testModeDefine).Where(d => !devOnly.Contains(d)).ToList();
+            var strip = Sanitize(stripDefines, testModeDefine).Where(d => !devOnly.Contains(d)).ToList();
 
             // Never add a define the same build strips (contradiction; preflight blocks it).
             var add = extra.Where(d => !global.Contains(d) && !strip.Contains(d)).ToList();
@@ -101,14 +109,26 @@ namespace UnicoStudio.BuildSystem.Editor
             var forbid = new List<string>(strip);
             if (!wantTestMode) forbid.Add(testModeDefine);
 
+            if (development)
+                add.AddRange(devOnly.Where(d => !global.Contains(d)));
+            else
+            {
+                remove.AddRange(devOnly.Where(global.Contains));
+                forbid.AddRange(devOnly);
+            }
+
             return new DefineDelta(add.ToArray(), addGlobal.ToArray(), remove.ToArray(), forbid.ToArray());
         }
 
         // Config-authoring mistakes, surfaced at preflight. Blocking: invalid tokens (they would
         // corrupt the ';'-joined defines string) and the same define in both lists (contradiction).
         // Advisory: the test-mode define in either list (the kind rule owns it; entries are ignored).
+        // Development-only list: invalid tokens and the test-mode define are blocking (the latter
+        // would make the two rules disagree on every non-development Test build); config entries
+        // naming a development-only define are advisory (the development rule owns them).
         public static List<DefineConfigIssue> ValidateConfig(
-            IEnumerable<string> extraDefines, IEnumerable<string> stripDefines, string testModeDefine)
+            IEnumerable<string> extraDefines, IEnumerable<string> stripDefines, string testModeDefine,
+            IEnumerable<string> developmentOnlyDefines = null)
         {
             // Materialize once: both lists are walked TWICE below (token issues, then the
             // intersection). Today's callers pass arrays, but the parameters are IEnumerable — a
@@ -117,18 +137,31 @@ namespace UnicoStudio.BuildSystem.Editor
             var extra = (extraDefines ?? Enumerable.Empty<string>()).ToList();
             var strip = (stripDefines ?? Enumerable.Empty<string>()).ToList();
 
-            var issues = new List<DefineConfigIssue>();
-            CollectTokenIssues(extra, "ExtraDefines", testModeDefine, issues);
-            CollectTokenIssues(strip, "StripDefines", testModeDefine, issues);
+            var devOnlyRaw = (developmentOnlyDefines ?? Enumerable.Empty<string>()).ToList();
+            var devOnly = Sanitize(devOnlyRaw, testModeDefine);
 
-            foreach (var both in Sanitize(extra, testModeDefine).Intersect(Sanitize(strip, testModeDefine)))
+            var issues = new List<DefineConfigIssue>();
+            foreach (var raw in devOnlyRaw)
+            {
+                var token = raw?.Trim() ?? "";
+                if (token.Length == 0) continue;
+                if (token == testModeDefine)
+                    issues.Add(new DefineConfigIssue(true, $"DevelopmentOnlyDefines must not contain '{testModeDefine}' — build kind manages it; remove the entry."));
+                else if (!BuildSystemSettings.IsValidDefine(token))
+                    issues.Add(new DefineConfigIssue(true, $"DevelopmentOnlyDefines entry '{token}' is not a valid define symbol."));
+            }
+
+            CollectTokenIssues(extra, "ExtraDefines", testModeDefine, devOnly, issues);
+            CollectTokenIssues(strip, "StripDefines", testModeDefine, devOnly, issues);
+
+            foreach (var both in Sanitize(extra, testModeDefine).Intersect(Sanitize(strip, testModeDefine)).Where(d => !devOnly.Contains(d)))
                 issues.Add(new DefineConfigIssue(true, $"'{both}' is in both ExtraDefines and StripDefines — remove it from one."));
 
             return issues;
         }
 
         private static void CollectTokenIssues(IEnumerable<string> tokens, string listName,
-            string testModeDefine, List<DefineConfigIssue> issues)
+            string testModeDefine, ICollection<string> developmentOnly, List<DefineConfigIssue> issues)
         {
             foreach (var raw in tokens ?? Enumerable.Empty<string>())
             {
@@ -136,6 +169,8 @@ namespace UnicoStudio.BuildSystem.Editor
                 if (token.Length == 0) continue; // blank rows are inspector noise, not errors
                 if (token == testModeDefine)
                     issues.Add(new DefineConfigIssue(false, $"'{testModeDefine}' is managed by build kind (Test adds it, Release strips it); the {listName} entry is ignored."));
+                else if (developmentOnly.Contains(token))
+                    issues.Add(new DefineConfigIssue(false, $"'{token}' is a development-only define (BuildSystemSettings) — development builds add it, all others strip it; the {listName} entry is ignored."));
                 else if (!BuildSystemSettings.IsValidDefine(token))
                     issues.Add(new DefineConfigIssue(true, $"{listName} entry '{token}' is not a valid define symbol."));
             }

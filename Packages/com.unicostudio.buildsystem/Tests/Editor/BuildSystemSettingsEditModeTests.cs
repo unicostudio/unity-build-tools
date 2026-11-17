@@ -37,6 +37,16 @@ namespace UnicoStudio.BuildSystem.Tests
         }
 
         [Test]
+        public void DevelopmentOnlyDefines_DefaultsToEmpty_NeverNull()
+        {
+            var s = ScriptableObject.CreateInstance<BuildSystemSettings>();
+            Assert.IsNotNull(s.DevelopmentOnlyDefines);
+            Assert.IsEmpty(s.DevelopmentOnlyDefines);
+            s.DevelopmentOnlyDefines = null;
+            Assert.IsNotNull(s.DevelopmentOnlyDefines);
+        }
+
+        [Test]
         public void IsValidDefine_Rules()
         {
             Assert.IsTrue(BuildSystemSettings.IsValidDefine("TEST_MODE"));

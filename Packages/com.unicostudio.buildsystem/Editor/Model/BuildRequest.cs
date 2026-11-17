@@ -21,7 +21,15 @@ namespace UnicoStudio.BuildSystem.Editor
         public OutputKind Outputs = OutputKind.Apk;   // Release/Android may be Apk|Aab
         public CompressionKind Compression = CompressionKind.LZ4HC;   // project standard
 
+        // BuildOptions.Development for the player. Never allowed on Release (preflight blocks,
+        // PlayerBuildStage refuses). The field defaults to false so a caller that never set it
+        // cannot get a development player; the panel and the CLI seed it from
+        // DefaultDevelopmentFor instead.
+        public bool Development;
+
         public string OutputFolder = "";       // empty => default Builds/{platform}/{kind}
         public string Label = "";              // optional filename suffix (letters/digits)
+
+        public static bool DefaultDevelopmentFor(BuildKind kind) => kind == BuildKind.Test;
     }
 }
