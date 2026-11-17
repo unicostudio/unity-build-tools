@@ -3,10 +3,13 @@
 UPM monorepo. Repo root is a REAL Unity 6000.0.62f1 dev project (open it to compile/test the
 packages in place). Two packages under `Packages/`:
 
-- `com.unicostudio.buildsystem` (current: 0.14.0) — panel + headless build pipeline, full
+- `com.unicostudio.buildsystem` (current: 0.15.0) — panel + headless build pipeline, full
   EditMode suite under `Tests/Editor/`.
-- `com.unicostudio.versiontracker` (current: 1.7.3) — build-info export; EditMode suite (21)
-  since 1.7.0, wired into the CI gate.
+- `com.unicostudio.versiontracker` (current: 1.8.0) — build-info export; EditMode suite (25)
+  since 1.7.0, wired into the CI gate. NOT consumed by the hosts: both dropped it from their
+  manifests when they integrated com.unico.sdk 3.3.2 (BTA `3ce538c12`, BT5 `a11954850`), which
+  carries its own tracker. Changes made here (e.g. 1.8.0's `developmentBuild`) reach the games
+  only if the same change lands in unico-sdk.
 
 The user (Tolgahan) communicates in **Turkish**; write code/docs/commits in English.
 Approval gates: pushes, merges, and tag publishes happen ONLY on explicit instruction.
@@ -31,7 +34,7 @@ On any problem: STOP and consult — do not improvise around a failure.
 ## Release ritual (per package)
 
 `package.json` version bump + `CHANGELOG.md` entry + commit + tag `<package-id>/<version>`
-(e.g. `com.unicostudio.buildsystem/0.14.0`) + push main and the tag. Then per host:
+(e.g. `com.unicostudio.buildsystem/0.15.0`) + push main and the tag. Then per host:
 edit the manifest pin, run headless `-runTests -testPlatform EditMode`, verify lock hash ==
 tag commit, commit manifest+lock together.
 
@@ -40,11 +43,12 @@ tag commit, commit manifest+lock together.
 - Headless runs need the target project's Unity editor CLOSED (check `pgrep -f MacOS/Unity`).
 - `-batchmode -nographics -quit` for compile checks; `-runTests -testPlatform EditMode
   -testResults <xml>` for suites (never combine `-runTests` with `-quit`).
-- Suite baselines (2026-08-25, post pin-bump to buildsystem 0.13.0 / versiontracker 1.7.3):
-  this repo 327/0 (buildsystem 305 + versiontracker 21 + 1 Unity Addressables doc stub);
-  BTA 423/0 (host 118 + buildsystem 305 — host keeps growing with team PRs: +52 PR #7,
-  +2 PR #8); BT5 626/0 (host 321 + buildsystem 305 — +3 landed with fb07c00c's level-order
-  tests). A count drift is a finding, not noise — name it.
+- Suite baselines (2026-11-17, buildsystem 0.15.0 / versiontracker 1.8.0): this repo 370/0
+  (buildsystem 344 + versiontracker 25 + 1 Unity Addressables doc stub). Hosts (only
+  buildsystem is in their `testables`): buildsystem must be 344; host totals NOT measured
+  since the 0.15.0 pin bump (last measured 2026-08-25 at buildsystem 305: BTA host 118,
+  BT5 host 321 — both keep growing with team PRs). A count drift is a finding, not noise —
+  name it.
 
 ## Consumers (hosts)
 
@@ -86,8 +90,8 @@ Open:
 2. CDN upload as a PostSuccess step — `CdnReminderCheck`'s strict-exemption is premised on CI
    doing the upload; needs the DevOps SFTP details. Ride-along niceties queued for the next
    releases (deliberately not worth their own ritual): UnicoBuildCli wrapping `Start` in a
-   try/catch that writes a failure result before Exit(1) (see `Editor/Core/_Info.md` item 6),
-   and versiontracker's missing `"unity"` field in package.json.
+   try/catch that writes a failure result before Exit(1) (see `Editor/Core/_Info.md` item 6).
+   (versiontracker's `"unity"` field shipped in 1.8.0.)
 3. ~~Q2 (InitializeOnLoad ordering) and Q6 (pre-Start throw → timeout)~~ — both MEASURED
    2026-08-25 and recorded in `Editor/Core/_Info.md`: the watcher decides before the runner
    drains (one-tick deadline boundary, accepted by design), and a throw escaping `Start` is
