@@ -21,7 +21,10 @@ namespace UnicoStudio.BuildSystem.Editor
 
             var message = "Development Build: ON (BuildOptions.Development only — no profiler autoconnect, no script debugging).";
             if (platform == BuildPlatform.iOS)
-                message += " Archive in Xcode and upload to TestFlight as Internal Only — never to external testers.";
+                message += " Archive in Xcode and upload with Distribute App > TestFlight Internal Only " +
+                           "(scripted uploads: testFlightInternalTestingOnly = true in ExportOptions.plist) — such a " +
+                           "build can never be submitted to the App Store. At launch iOS asks to find devices on the " +
+                           "local network: that is the development player connection, expected, and \"Don't Allow\" is fine.";
             return CheckResult.Pass(message);
         }
 

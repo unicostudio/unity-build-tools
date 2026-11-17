@@ -143,7 +143,9 @@ namespace UnicoStudio.BuildSystem.Editor
             }
             ctx.AddStep(ctx.Request.Development ? "Development Build: ON" : "Development Build: OFF");
             if (ctx.Request.Development && target == BuildTarget.iOS)
-                ctx.AddStep("Development build: archive in Xcode and upload to TestFlight as Internal Only — never to external testers");
+                ctx.AddStep("Development build: upload with Distribute App > TestFlight Internal Only " +
+                            "(ExportOptions.plist: testFlightInternalTestingOnly = true) — it can never reach the App Store; " +
+                            "the local network prompt at launch is expected, \"Don't Allow\" is fine");
 
             // BuildPlayer returns after every IPostprocessBuildWithReport ran, so the export is final
             // here. An entitlements value Xcode cannot resolve means a capability post-processor

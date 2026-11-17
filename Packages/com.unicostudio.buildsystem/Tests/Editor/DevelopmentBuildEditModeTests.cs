@@ -63,6 +63,9 @@ namespace UnicoStudio.BuildSystem.Tests
             Assert.AreEqual(CheckSeverity.Pass, r.Severity);
             StringAssert.Contains("TestFlight", r.Message);
             StringAssert.Contains("Internal Only", r.Message);
+            // The development player connection makes iOS ask for local network access on launch;
+            // the message must say that is expected so testers decline it instead of reporting it.
+            StringAssert.Contains("local network", r.Message);
         }
 
         [Test]

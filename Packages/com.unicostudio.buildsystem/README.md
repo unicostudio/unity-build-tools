@@ -200,9 +200,15 @@ Development builds (0.15.0):
   The global `EditorUserBuildSettings.development` is neither read nor changed.
 - After `BuildPlayer` the build report's own options are compared with the request; a mismatch
   fails the build. The step log records `Development Build: ON` / `OFF`, the result JSON carries
-  `DevelopmentBuild`, and an iOS development build adds a step to upload the archive to
-  TestFlight as **Internal Only** (the package exports the Xcode project; Archive and upload stay
-  manual).
+  `DevelopmentBuild`, and an iOS development build adds a step to upload the archive with
+  Xcode Organizer > Distribute App > **TestFlight Internal Only** (scripted uploads:
+  `testFlightInternalTestingOnly = true` in `ExportOptions.plist`). Such a build can never be
+  submitted to the App Store, so a development build cannot be released by mistake. The package
+  exports the Xcode project; Archive and upload stay manual.
+- An iOS development build asks at launch to find devices on the local network. That is Unity's
+  development player connection (the build's `boot.config` switches it to listen mode; a
+  non-development build has no such entry and never asks). It is expected; testers can answer
+  "Don't Allow".
 - `BuildSystemSettings.DevelopmentOnlyDefines` lists defines that belong only in development
   builds (e.g. an SDK's verbose test logging that its guide says to enable with Development
   ticked). A development build adds them to the player (`extraScriptingDefines`, no reload);

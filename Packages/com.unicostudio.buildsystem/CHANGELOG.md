@@ -20,13 +20,17 @@
   - Visible everywhere: `DevelopmentBuildCheck` states ON/OFF in preflight, the step log
     records `Development Build: ON`/`OFF`, and the result JSON gains `DevelopmentBuild`
     (true only when a player was built). An iOS development build adds a step to upload the
-    archive to TestFlight as Internal Only; Archive and upload stay manual.
+    archive with Distribute App > TestFlight Internal Only (`testFlightInternalTestingOnly =
+    true` for scripted uploads), which can never be submitted to the App Store; Archive and
+    upload stay manual.
   - Local network, measured on two iOS exports (Development on vs off): `Info.plist` is
     identical and carries neither `NSLocalNetworkUsageDescription` nor `NSBonjourServices`. The
     only player-side difference is `Data/boot.config`: the development build gains
     `player-connection-mode=Listen` plus the build machine's LAN address (Unity's player
-    connection, used to attach the profiler). Whether that listening player raises iOS's local
-    network prompt on a device is not measured.
+    connection, used to attach the profiler). On devices that listening player makes iOS ask to
+    find devices on the local network at launch. Accepted as expected development-build
+    behaviour and left in place: the preflight line and the iOS step say so, and "Don't Allow"
+    is fine. Release builds never carry it.
   - The Addressables profile is unaffected: a development Test build loads the same Test
     content as any other Test build.
 - **`BuildSystemSettings.DevelopmentOnlyDefines`.** Defines listed here are added to the player
